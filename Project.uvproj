@@ -176,7 +176,7 @@
           </Flash1>
           <bUseTDR>0</bUseTDR>
           <Flash2></Flash2>
-          <Flash3>"batchisp" (-device $D -hardware RS232 -port COM10 -baudrate 9600 -operation MEMORY FLASH LOADBUFFER #H PROGRAM)</Flash3>
+          <Flash3>"batchisp" (-device $D -hardware RS232 -port COM3 -baudrate 9600 -operation MEMORY FLASH LOADBUFFER #H PROGRAM)</Flash3>
           <Flash4></Flash4>
           <pFcarmOut></pFcarmOut>
           <pFcarmGrp></pFcarmGrp>

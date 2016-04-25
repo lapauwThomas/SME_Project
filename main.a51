@@ -50,7 +50,7 @@ ramInit:
 			
 ; seed of LFSR		
 MOV 18h, #1101010b 
-			
+MOV R7, #01111111b ;data rows (msb = 0, others are 1) single bit zero, to enable current row
 			
 SETB TR0 ;run tmr0
 LJMP main
@@ -59,13 +59,16 @@ LJMP main
 main:		
 
 ;DISPLAY PART
-		MOV R7,18h ; get data from MSB LFSR
+		;MOV R7,18h ; get data from MSB LFSR
 		CLR TR0 ;stop timer during buffer update
 		CPL P2.4 ; toggle led to see if working
-		LCALL LFSR  ; generate new random data
+		;LCALL LFSR  ; generate new random data
 		LCALL dispColShift ; shift new column in display buffer
 		SETB TR0 ;run tmr0 
 		LCALL delay ; delay before repeat
+		MOV A,R7
+		RR A
+		MOV R7,A
 		
 		;MOV R7,#00h
 		;CLR TR0
@@ -96,17 +99,17 @@ ISR_tmr0:
 rowIteration:
 
 			MOV R7, #05 ; counter for 5 bytes of row data
-lbl1:
+lineBytes:
 			MOV A,@R0 ; get data from ram
 			MOV R6,A
 			acall shiftR6 ; shift byte into ram
 			INC R0 ; get next byte
-			DJNZ R7,lbl1 ; rinse and repeat
+			DJNZ R7,lineBytes ; rinse and repeat
 			
 			;shift R2 with the current row enable in the register
 			MOV A,R2
 			MOV R6, A
-			Acall shiftR6 ; shift collumn data byte into SR
+			Acall shiftR6 ; shift column data byte into SR
 			SETB P3.2 ; cycle store clock
 			CLR P3.2
 
@@ -116,6 +119,17 @@ lbl1:
 			MOV R2,A
 			 ; repeat until 7 rows done
 			DJNZ R1, rowIteration
+			
+			
+			
+			MOV R1, #06
+lastLineComp:			 ;loop to approximate the timing of the other rows to have similar brightness
+			MOV R6, #0FFh
+			Acall shiftR6 ; shift collumn data byte into SR
+			DJNZ R1,lastLineComp
+			
+			SETB P3.2 ; cycle store clock
+			CLR P3.2
 
 			CLR RS1 ;move to registerbank 00h to 08h
 			CLR RS0	
@@ -170,7 +184,7 @@ delay:
 		RET
 
 loop: 	
-		MOV R2, #00Fh
+		MOV R2, #00h
 		LCALL loop2
 		DJNZ R1, loop
 		RET
