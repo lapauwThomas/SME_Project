@@ -4,7 +4,7 @@
 ;*                                         *
 ;* Names: Steven Peters - Thomas Lapauw    *
 ;*                                         *
-;*       Final Project: racing game        *
+;*                Task 9                   *
 ;*                                         *
 ;*******************************************
 
@@ -27,45 +27,39 @@ LJMP ISR_tmr0
 ;Initialization code
 init:	
 
-		CLR P2.3 ;led to see if code is running
+			;Initialization code here
+			CLR P2.3 ;led to see if code is running
 			
-;*****************************************************************************
-		;init tmr0
-		MOV TMOD,#00000001b ;config tmr0 in 16bit mode
-		MOV TH0,#0FBh ;tmr0 MSB
-		MOV TL0,#099h ;tmr0 LSB
-		SETB ET0 ;enable interrupt of tmr0
-		SETB EA ;global interrupt enable
+			;init tmr0
+			MOV TMOD,#00000001b ;config tmr0 in 16bit mode
+			MOV TH0,#0FBh ;tmr0 MSB
+			MOV TL0,#099h ;tmr0 LSB
+			SETB ET0 ;enable interrupt of tmr0
+			SETB EA ;global interrupt enable
 
-		MOV SP, #70h ; move stackpointer above registers
-		 
-;****************************************************************************	 
+			MOV SP, #70h ; move stackpointer above registers
+			 
+			 
 ;Initialize ram			 
-		MOV R0,#030h 
-		MOV R1,#040
+			MOV R0,#030h 
+			MOV R1,#040
 ramInit:
-		MOV @R0,#0FFh
-		INC R0
-		DJNZ R1,ramInit
+			MOV @R0,#0FFh
+			INC R0
+			DJNZ R1,ramInit
 			
-			
-;*********************************************************************************
 ; seed of LFSR		
-	MOV 18h, #1101010b 
-
-;**********************************************************************************
-	; Setup for the ADC
-	MOV ADCON,#00100000b ;enable the adc
-	MOV ADCF, #00000001b ; set P1.0 as ADC input
-	
-	SETB TR0 ;run tmr0
+MOV 18h, #1101010b 
+MOV R7, #01111111b ;data rows (msb = 0, others are 1) single bit zero, to enable current row
+			
+SETB TR0 ;run tmr0
 LJMP main
 			
 ;Main program
 main:		
 
 ;DISPLAY PART
-		MOV R7, ADDH
+		;MOV R7,18h ; get data from MSB LFSR
 		CLR TR0 ;stop timer during buffer update
 		CPL P2.4 ; toggle led to see if working
 		;LCALL LFSR  ; generate new random data
@@ -190,7 +184,7 @@ delay:
 		RET
 
 loop: 	
-		MOV R2, #00Fh
+		MOV R2, #00h
 		LCALL loop2
 		DJNZ R1, loop
 		RET
@@ -242,8 +236,6 @@ LFSRShift:
 	RLC A
 	MOV R0,A
 	ret	
-	
-
 	
 
 END
