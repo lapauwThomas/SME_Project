@@ -20,6 +20,9 @@ LJMP init
 ;Specify tmr0 interrupt address vector 
 ORG 000Bh
 LJMP ISR_tmr0
+
+ORG 001Bh
+LJMP ISR_tmr1
 ;Address declarations
 
 ;Constants
@@ -31,9 +34,14 @@ init:
 			CLR P2.3 ;led to see if code is running
 			
 			;init tmr0
-			MOV TMOD,#00000001b ;config tmr0 in 16bit mode
+			MOV TMOD,#00010001b ;config tmr0 & tmr1 in 16bit mode
 			MOV TH0,#0FBh ;tmr0 MSB
 			MOV TL0,#099h ;tmr0 LSB
+			
+			MOV TH1,#0FFh ;tmr0 MSB
+			MOV TL1,#0FFh ;tmr0 LSB
+			
+			SETB ET1
 			SETB ET0 ;enable interrupt of tmr0
 			SETB EA ;global interrupt enable
 
@@ -51,54 +59,74 @@ ramInit:
 ; seed of LFSR		
 MOV 18h, #1101010b 
 MOV R7, #01111111b ;data rows (msb = 0, others are 1) single bit zero, to enable current row
-			
+
+LCALL LFSR  ; generate new random data	
+
 SETB TR0 ;run tmr0
+SETB TR1
+
+MOV R5,#20
+
 LJMP main
 			
 ;Main program
 main:		
 
-;DISPLAY PART
-		CLR TR0 ;stop timer during buffer update
-		CPL P2.4 ; toggle led to see if working
-		MOV A,18h ; get data from MSB LFSR
-		ANL A,#00001111b ;mask for the number of blocks
-		RL A ; multiply twice by 2 because 4 bytes per block
-		RL A
-		MOV R2, A ; save current adress
-		;MOV A,#0
-		MOV R3,#4 ; repeat 4 times
+;;DISPLAY PART
+		;CLR TR0 ;stop timer during buffer update
+		;;CLR EA ;global interrupt disable
+		;CPL P2.4 ; toggle led to see if working
+		;MOV A,18h ; get data from MSB LFSR
+		;;RL A ; multiply twice by 2 because 4 bytes per block
+		;;RL A
 		
-		MOV A, #0 ;test always block 2 on offset 8 form block0
+		;ANL A,#0011100b ;mask for the number of blocks
+		;;MOV B,#4
+		;;MUL AB
 		
-byteIt:
+		;MOV R2, A ; save current adress
+		;;;MOV A,#0
+		;MOV R3,#4 ; repeat 4 times
+		;;MOV A, #0h
+		;;MOV R2, #0h ; save current adress
+;byteIt:
+		;MOV A,R2
+		;MOV DPTR, #block0		; begin bij block0
+		;MOVC A,@A+DPTR
+
+		;MOV R7,A ; stockate data in R7 for collumnshift
+		;LCALL dispColShift
 		
-		MOV DPTR, #block0		; begin bij block0
-		MOVC A,@A+DPTR
-		MOV R7,A ; stockate data in R7 for collumnshift
-		LCALL dispColShift
+		;MOV A,R2 ; retrieve current data offset
+		;INC A; advance one adress
+		;MOV R2, A ; save current adress
 		
-		MOV A,R2 ; retrieve current data offset
-		INC A; advance one adress
-		MOV R2, A ; save current adress
+		;SETB TR0 ;stop timer during buffer update
+		;;SETB EA ;global interrupt disable
+		;;LCALL delay ; delay before repeat
+		;CLR TR0 ;stop timer during buffer update
+		;;CLR EA ;global interrupt disable
 		
-		DJNZ R3, byteIt ; jupmp back to te iteration
+		;DJNZ R3, byteIt ; jupmp back to te iteration
 		
 
-		LCALL LFSR  ; generate new random data
-		;LCALL dispColShift ; shift new column in display buffer
-		SETB TR0 ;run tmr0 
-		LCALL delay ; delay before repeat
-		;MOV A,R7
-		;RR A
-		;MOV R7,A
+		;LCALL LFSR  ; generate new random data
 		
-		;MOV R7,#00h
-		;CLR TR0
-		;CLR P2.4
-		;LCALL dispColShift
-		;SETB TR0 ;run tmr0
-		;LCALL delay
+		;;LCALL delay ; delay before repeat
+		;;LCALL dispColShift ; shift new column in display buffer
+		;SETB TR0 ;stop timer during buffer update
+		;;SETB EA ;global interrupt disable
+
+		;;MOV A,R7
+		;;RR A
+		;;MOV R7,A
+		
+		;;MOV R7,#00h
+		;;CLR TR0
+		;;CLR P2.4
+		;;LCALL dispColShift
+		;;SETB TR0 ;run tmr0
+		;;LCALL delay
 
 				
 			LJMP main
@@ -109,6 +137,7 @@ byteIt:
 ISR_tmr0: 
 			CLR EA ;global interrupt disable
 			CLR TR0 ;stop tmr0
+			CLR TR1
 			;reload timer
 			MOV TH0,#0FBh ;tmr0 MSB
 			MOV TL0,#099h ;tmr0 LSB
@@ -158,9 +187,50 @@ lastLineComp:			 ;loop to approximate the timing of the other rows to have simil
 			CLR RS0	
 			;reenable timers
 			SETB TR0 ;run tmr0
+			SETB TR1
 			SETB EA ;global interrupt disable
 			
 			RETI
+
+
+ISR_tmr1:
+;DISPLAY PART
+		CLR TR0 ;stop timer during buffer update
+		CLR TR1 ;stop timer during buffer update
+		CLR EA ;global interrupt disable
+		
+		MOV TH1,#0FFh ;tmr0 MSB
+		MOV TL1,#099h ;tmr0 LSB
+		
+		DJNZ R5, afterRandom
+		
+		
+		MOV A, 53h
+		MOV DPTR, #block0		; begin bij block0
+		MOVC A,@A+DPTR
+
+		MOV R7,A ; stockate data in R7 for collumnshift
+		LCALL dispColShift
+		
+		MOV A, 53h ; retrieve current data offset
+		INC A; advance one adress
+		MOV 53h, A ; save current adress
+
+		DJNZ R3, afterRandom ; jupmp back to te iteration
+		MOV R3,#4 ; repeat 4 times
+		MOV A,18h ; get data from MSB LFSR
+		ANL A,#0011100b ;mask for the number of blocks		
+		MOV 53h, A ; save current adress for next block
+		LCALL LFSR  ; generate new random data
+		CPL P2.4 ; toggle led to see if working
+		MOV R5,#20
+	afterRandom:
+		SETB TR1 ;stop timer during buffer update
+		SETB TR0
+		SETB EA
+
+reti
+
 
 ;Shift byte from R6 into shift registers
 shiftR6:
@@ -202,12 +272,12 @@ dispColShiftLoop:
 	
 ;rudimentary delay for test purposes
 delay:	 
-		MOV R1, #0EFh
+		MOV R6, #09Fh
 		LCALL loop
 		RET
 
 loop: 	
-		MOV R2, #00h
+		MOV R7, #00h
 		LCALL loop2
 		DJNZ R1, loop
 		RET
