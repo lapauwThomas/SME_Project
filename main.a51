@@ -59,16 +59,39 @@ LJMP main
 main:		
 
 ;DISPLAY PART
-		;MOV R7,18h ; get data from MSB LFSR
 		CLR TR0 ;stop timer during buffer update
 		CPL P2.4 ; toggle led to see if working
-		;LCALL LFSR  ; generate new random data
-		LCALL dispColShift ; shift new column in display buffer
+		MOV A,18h ; get data from MSB LFSR
+		ANL A,#00001111b ;mask for the number of blocks
+		RL A ; multiply twice by 2 because 4 bytes per block
+		RL A
+		MOV R2, A ; save current adress
+		;MOV A,#0
+		MOV R3,#4 ; repeat 4 times
+		
+		MOV A, #0 ;test always block 2 on offset 8 form block0
+		
+byteIt:
+		
+		MOV DPTR, #block0		; begin bij block0
+		MOVC A,@A+DPTR
+		MOV R7,A ; stockate data in R7 for collumnshift
+		LCALL dispColShift
+		
+		MOV A,R2 ; retrieve current data offset
+		INC A; advance one adress
+		MOV R2, A ; save current adress
+		
+		DJNZ R3, byteIt ; jupmp back to te iteration
+		
+
+		LCALL LFSR  ; generate new random data
+		;LCALL dispColShift ; shift new column in display buffer
 		SETB TR0 ;run tmr0 
 		LCALL delay ; delay before repeat
-		MOV A,R7
-		RR A
-		MOV R7,A
+		;MOV A,R7
+		;RR A
+		;MOV R7,A
 		
 		;MOV R7,#00h
 		;CLR TR0
@@ -238,4 +261,63 @@ LFSRShift:
 	ret	
 	
 
+	block0:
+	db 0x3e
+	db 0x3e
+	db 0x3e
+	db 0x3e
+	
+	
+	block1:
+	
+	db 0x3e
+	db 0x1C
+	db 0x1C
+	db 0x3e
+	
+	block2:
+	
+	db 0x3e
+	db 0x38
+	db 0x38
+	db 0x3e
+		
+	block3:
+	
+	db 0x3e
+	db 0x18
+	db 0x18
+	db 0x3e
+		
+	block4:
+	
+	db 0x3e
+	db 0x06
+	db 0x06
+	db 0x3e
+	
+	block5:
+	db 0x3e
+	db 0x08
+	db 0x08
+	db 0x3e
+		
+	block6:
+	
+	db 0x3e
+	db 0x32
+	db 0x32
+	db 0x3e
+		
+	block7:
+	db 0x3e
+	db 0x26
+	db 0x26
+	db 0x3e
+		
+		
+
 END
+
+	
+		
