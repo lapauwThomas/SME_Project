@@ -31,19 +31,19 @@ LJMP ISR_tmr1
 init:	
 
 			;Initialization code here
-			CLR P2.3 ;led to see if code is running
+			;CLR P2.3 ;led to see if code is running
 			
 			;init tmr0
 			MOV TMOD,#00010001b ;config tmr0 & tmr1 in 16bit mode
-			MOV TH0,#0FBh ;tmr0 MSB
-			MOV TL0,#099h ;tmr0 LSB
+			MOV TH0,#0FFh ;tmr0 MSB
+			MOV TL0,#0FFh ;tmr0 LSB
 			
 			MOV TH1,#0FFh ;tmr0 MSB
 			MOV TL1,#0FFh ;tmr0 LSB
 			
 			SETB ET1
 			SETB ET0 ;enable interrupt of tmr0
-			SETB EA ;global interrupt enable
+
 
 			MOV SP, #70h ; move stackpointer above registers
 			 
@@ -58,14 +58,23 @@ ramInit:
 			
 ; seed of LFSR		
 MOV 18h, #1101010b 
-MOV R7, #01111111b ;data rows (msb = 0, others are 1) single bit zero, to enable current row
 
-LCALL LFSR  ; generate new random data	
+MOV R0,#040
+gameInit:
+		MOV R7,#03eh ; stockate data in R7 for collumnshift
+		LCALL dispColShift
+		DJNZ R0, gameInit
+
+
+		MOV A,18h ; get data from MSB LFSR
+		ANL A,#0011100b ;mask for the number of blocks		
+		MOV 53h, A ; save current adress for next block
+
+CLR P2.3 ;led to see if code is running
 
 SETB TR0 ;run tmr0
 SETB TR1
-
-MOV R5,#20
+SETB EA ;global interrupt enable
 
 LJMP main
 			
@@ -139,8 +148,8 @@ ISR_tmr0:
 			CLR TR0 ;stop tmr0
 			CLR TR1
 			;reload timer
-			MOV TH0,#0FBh ;tmr0 MSB
-			MOV TL0,#099h ;tmr0 LSB
+			MOV TH0,#0D0h ;tmr0 MSB
+			MOV TL0,#000h ;tmr0 LSB
 			
 ;DISPLAY PART
 		CLR RS1 ;move to registerbank 08h to 0Fh
@@ -173,12 +182,18 @@ lineBytes:
 			DJNZ R1, rowIteration
 			
 			
+			MOV R6, #11011111b
+			Acall shiftR6 ; shift collumn data byte into SR
 			
-			MOV R1, #06
+			MOV R1, #04
 lastLineComp:			 ;loop to approximate the timing of the other rows to have similar brightness
 			MOV R6, #0FFh
 			Acall shiftR6 ; shift collumn data byte into SR
 			DJNZ R1,lastLineComp
+			
+
+			MOV R6, #11101111b
+			Acall shiftR6 ; shift collumn data byte into SR
 			
 			SETB P3.2 ; cycle store clock
 			CLR P3.2
@@ -199,10 +214,10 @@ ISR_tmr1:
 		CLR TR1 ;stop timer during buffer update
 		CLR EA ;global interrupt disable
 		
-		MOV TH1,#0FFh ;tmr0 MSB
-		MOV TL1,#099h ;tmr0 LSB
+		MOV TH1,#00h ;tmr0 MSB
+		MOV TL1,#00h ;tmr0 LSB
 		
-		DJNZ R5, afterRandom
+		;DJNZ R5, afterRandom
 		
 		
 		MOV A, 53h
@@ -223,7 +238,7 @@ ISR_tmr1:
 		MOV 53h, A ; save current adress for next block
 		LCALL LFSR  ; generate new random data
 		CPL P2.4 ; toggle led to see if working
-		MOV R5,#20
+		;MOV R5,#2
 	afterRandom:
 		SETB TR1 ;stop timer during buffer update
 		SETB TR0
