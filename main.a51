@@ -47,8 +47,8 @@ bytesPerRow EQU 5
 	
 bytesPerBlock EQU 8
 	
-cursorByte EQU 11111011b
-cursorByteMask EQU 00100000b
+cursorByte EQU 11111110b
+cursorByteMask EQU 00000001b
 
 
 
@@ -111,7 +111,7 @@ gameInit:
 
 		MOV blockIteration,R3
 	
-	
+		MOV ADCVal,#01100000b
 
 
 SETB TR0 ;run tmr0
@@ -192,10 +192,10 @@ lastLineComp:			 ;loop to approximate the timing of the other rows to have simil
 	locationLbl:
 			RR A
 			DJNZ R6,locationLbl  ;rotate cursor data equal to location
-			ORL A,#10000011b ;mask data for center 
+			ORL A,#00000001b ;mask data for center 
 			MOV R6,A ; move cursor data to R6 for shift
 			Acall shiftR6 ; shift collumn data byte into SR for row enable
-			
+			MOV cursor,A
 			SETB P3.2 ; cycle store clock
 			CLR P3.2
 			
@@ -294,10 +294,10 @@ detectCollision:
 	MOV R1,#0
 	iteration:
 	MOV A,@R0
+	CPL A
 	ANL A,cursorByteMask
-	RLC A
-	RLC A
-	RLC A ;rotate until bit from mask is in Carry
+
+	RRC A ;rotate until bit from mask is in Carry
 	MOV A,R1
 	RLC A ; rotate so carry comes in R1
 	MOV R1,A
@@ -308,8 +308,9 @@ detectCollision:
 	
 	MOV A,cursor
 	CPL A
+	RR A
 	ANL A,R1
-	JNZ reset
+	;JNZ reset
 ;	SETB TR0 ;stop timer during buffer update
 ;	SETB TR1 ;stop timer during buffer update
 ;	SETB EA ;global interrupt disable
