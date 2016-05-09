@@ -47,7 +47,7 @@ bytesPerRow EQU 5
 	
 bytesPerBlock EQU 8
 	
-cursorByte EQU 11011111b
+cursorByte EQU 11111011b
 cursorByteMask EQU 00100000b
 
 
@@ -171,14 +171,14 @@ lineBytes:
 			DJNZ R1, rowIteration
 			
 			
-			MOV R6, #cursorByte
-			Acall shiftR6 ; shift collumn data byte into SR
-			
+
 			MOV R1, #04
 lastLineComp:			 ;loop to approximate the timing of the other rows to have similar brightness
 			MOV R6, #0FFh
 			Acall shiftR6 ; shift collumn data byte into SR
 			DJNZ R1,lastLineComp
+						MOV R6, #cursorByte
+			Acall shiftR6 ; shift collumn data byte into SR
 			
 
 			;MOV R6, #11101111b
@@ -327,9 +327,9 @@ LJMP init
 
 dispRowShift:
 	MOV A,@R1
-	RRC A
+	RLC A
 	MOV @R1,A
-	DEC R1
+	INC R1
 	DJNZ R6, dispRowShift
 	RET
 ;shift 7 MSB in framebuffer
@@ -337,7 +337,7 @@ dispColShift:
 	MOV A, R7
 	MOV	R5, #numberOfRows ;counter to count rows
 	;RRC A ;rotate to drop LSB
-	MOV R1, #vidMemEnd ; start at highest address to decrease each time
+	MOV R1, #vidMemStart ; start at highest address to decrease each time
 dispColShiftLoop:
 	RRC A ;Rotate LSB in carry to shift in row
 	MOV	R6, #bytesPerRow ; counter to rotate 5 horizontal bytes

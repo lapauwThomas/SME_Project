@@ -1,4 +1,4 @@
-BL51 BANKED LINKER/LOCATER V6.22                                                        05/09/2016  16:09:15  PAGE 1
+BL51 BANKED LINKER/LOCATER V6.22                                                        05/09/2016  16:35:06  PAGE 1
 
 
 BL51 BANKED LINKER/LOCATER V6.22, INVOKED BY:
@@ -59,7 +59,7 @@ SYMBOL TABLE OF MODULE:  .\Objects\Project (MAIN)
   D:00B6H         SYMBOL        CANBT3
   D:00B3H         SYMBOL        CANCONCH
   D:00CEH         SYMBOL        CANEN1
-BL51 BANKED LINKER/LOCATER V6.22                                                      05/09/2016  16:09:15  PAGE 2
+BL51 BANKED LINKER/LOCATER V6.22                                                      05/09/2016  16:35:06  PAGE 2
 
 
   D:00CFH         SYMBOL        CANEN2
@@ -119,11 +119,11 @@ SYMBOL TABLE OF MODULE:  .\Objects\Project (MAIN)
   D:00D9H         SYMBOL        CMOD
   B:00C8H.0       SYMBOL        CP_RL2
   B:00D8H.6       SYMBOL        CR
-BL51 BANKED LINKER/LOCATER V6.22                                                      05/09/2016  16:09:15  PAGE 3
+BL51 BANKED LINKER/LOCATER V6.22                                                      05/09/2016  16:35:06  PAGE 3
 
 
   D:0054H         SYMBOL        CURSOR
-  N:00DFH         SYMBOL        CURSORBYTE
+  N:00FBH         SYMBOL        CURSORBYTE
   N:0020H         SYMBOL        CURSORBYTEMASK
   B:00D0H.7       SYMBOL        CY
   B:00C8H.1       SYMBOL        C_T2
@@ -170,7 +170,7 @@ SYMBOL TABLE OF MODULE:  .\Objects\Project (MAIN)
   B:0088H.0       SYMBOL        IT0
   B:0088H.2       SYMBOL        IT1
   C:0160H         SYMBOL        ITERATION
-  C:00D1H         SYMBOL        LASTLINECOMP
+  C:00CDH         SYMBOL        LASTLINECOMP
   C:01A2H         SYMBOL        LFSR
   C:01CDH         SYMBOL        LFSRSHIFT
   C:00B7H         SYMBOL        LINEBYTES
@@ -179,7 +179,7 @@ SYMBOL TABLE OF MODULE:  .\Objects\Project (MAIN)
   C:019FH         SYMBOL        LOOP2
   C:0099H         SYMBOL        MAIN
   N:0028H         SYMBOL        NUMBEROFCOLLUMNS
-BL51 BANKED LINKER/LOCATER V6.22                                                      05/09/2016  16:09:15  PAGE 4
+BL51 BANKED LINKER/LOCATER V6.22                                                      05/09/2016  16:35:06  PAGE 4
 
 
   N:0007H         SYMBOL        NUMBEROFROWS
@@ -239,7 +239,7 @@ SYMBOL TABLE OF MODULE:  .\Objects\Project (MAIN)
   B:00B0H.1       SYMBOL        TXD
   N:0052H         SYMBOL        VIDMEMEND
   N:0023H         SYMBOL        VIDMEMLENGTH
-BL51 BANKED LINKER/LOCATER V6.22                                                      05/09/2016  16:09:15  PAGE 5
+BL51 BANKED LINKER/LOCATER V6.22                                                      05/09/2016  16:35:06  PAGE 5
 
 
   N:0030H         SYMBOL        VIDMEMSTART
@@ -299,7 +299,7 @@ SYMBOL TABLE OF MODULE:  .\Objects\Project (MAIN)
   C:00B1H         LINE#         147
   C:00B3H         LINE#         148
   C:00B5H         LINE#         151
-BL51 BANKED LINKER/LOCATER V6.22                                                      05/09/2016  16:09:15  PAGE 6
+BL51 BANKED LINKER/LOCATER V6.22                                                      05/09/2016  16:35:06  PAGE 6
 
 
   C:00B7H         LINE#         153
@@ -316,9 +316,9 @@ SYMBOL TABLE OF MODULE:  .\Objects\Project (MAIN)
   C:00C7H         LINE#         168
   C:00C8H         LINE#         169
   C:00C9H         LINE#         171
-  C:00CBH         LINE#         174
-  C:00CDH         LINE#         175
-  C:00CFH         LINE#         177
+  C:00CBH         LINE#         175
+  C:00CDH         LINE#         177
+  C:00CFH         LINE#         178
   C:00D1H         LINE#         179
   C:00D3H         LINE#         180
   C:00D5H         LINE#         181
@@ -359,7 +359,7 @@ SYMBOL TABLE OF MODULE:  .\Objects\Project (MAIN)
   C:0116H         LINE#         235
   C:0118H         LINE#         236
   C:011AH         LINE#         237
-BL51 BANKED LINKER/LOCATER V6.22                                                      05/09/2016  16:09:15  PAGE 7
+BL51 BANKED LINKER/LOCATER V6.22                                                      05/09/2016  16:35:06  PAGE 7
 
 
   C:011CH         LINE#         238
@@ -419,7 +419,7 @@ SYMBOL TABLE OF MODULE:  .\Objects\Project (MAIN)
   C:0179H         LINE#         329
   C:017AH         LINE#         330
   C:017BH         LINE#         331
-BL51 BANKED LINKER/LOCATER V6.22                                                      05/09/2016  16:09:15  PAGE 8
+BL51 BANKED LINKER/LOCATER V6.22                                                      05/09/2016  16:35:06  PAGE 8
 
 
   C:017CH         LINE#         332
@@ -479,7 +479,7 @@ SYMBOL TABLE OF MODULE:  .\Objects\Project (MAIN)
   C:01D6H         LINE#         409
   C:01D7H         LINE#         410
   C:01D8H         LINE#         411
-BL51 BANKED LINKER/LOCATER V6.22                                                      05/09/2016  16:09:15  PAGE 9
+BL51 BANKED LINKER/LOCATER V6.22                                                      05/09/2016  16:35:06  PAGE 9
 
 
   C:01D9H         LINE#         412
