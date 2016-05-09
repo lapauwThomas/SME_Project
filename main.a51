@@ -17,7 +17,6 @@ ORG 0000h
 LJMP init 
 
 ;Interrupt address vectors
-;Specify tmr0 interrupt address vector 
 ORG 000Bh
 LJMP ISR_tmr0
 
@@ -26,6 +25,10 @@ LJMP ISR_tmr1
 
 ORG 0043h
 LJMP ISR_ADC
+
+
+
+
 ;Address declarations
 vidMemStart EQU 030h
 vidMemEnd EQU 052h
@@ -34,15 +37,17 @@ vidMemLength EQU 35
 numberOfCollumns EQU 40
 numberOfRows EQU 7
 bytesPerRow EQU 5
+	
+bytesPerBlock EQU 8
+	
+cursorByte EQU 11011111b
 
-;Constants
+
+
 
 ;Initialization code
 init:	
 
-			;Initialization code here
-			;CLR P2.3 ;led to see if code is running
-			
 			;init tmr0
 			MOV TMOD,#00010001b ;config tmr0 & tmr1 in 16bit mode
 			MOV TH0,#0FFh ;tmr0 MSB
@@ -69,6 +74,7 @@ ramInit:
 ; seed of LFSR		
 MOV 18h, #1101010b 
 
+
 MOV R0,#numberOfCollumns
 gameInit:
 		MOV R7,#03eh ; stockate data in R7 for collumnshift
@@ -88,17 +94,29 @@ gameInit:
 	MOV ADCON, #00101111b ; set P1.0 as ADC input
 
 
-CLR P2.3 ;led to see if code is running
+		MOV R3,#bytesPerBlock ; repeat 4 times
+		MOV A,18h ; get data from MSB LFSR
+		ANL A,#0111000b ;mask for the number of blocks		
+		MOV 53h, A ; save current adress for next block
+		LCALL LFSR  ; generate new random data
+		CPL P2.4 ; toggle led to see if working
+
+		MOV 57h,R3
+	
+	
+
 
 SETB TR0 ;run tmr0
 SETB TR1
 SETB EA ;global interrupt enable
 
+CLR P2.3 ;led to see if code is running
 LJMP main
 			
 ;Main program
 main:		
-
+				LCALL LFSR  ; generate new random data
+				
 
 				
 			LJMP main
@@ -145,7 +163,7 @@ lineBytes:
 			DJNZ R1, rowIteration
 			
 			
-			MOV R6, #11011111b
+			MOV R6, #cursorByte
 			Acall shiftR6 ; shift collumn data byte into SR
 			
 			MOV R1, #04
@@ -157,18 +175,18 @@ lastLineComp:			 ;loop to approximate the timing of the other rows to have simil
 
 			;MOV R6, #11101111b
 			MOV A,5Ah
-			ANL A, #11100000b
+			ANL A, #11100000b ; mask 8 MSB 
 			RL A
+			RL A ;rotate so MSB become LSB
 			RL A
-			RL A
-			MOV R6, A
-			MOV A,#11111110b
+			MOV R6, A ;stockate in R6
+			MOV A,#11111110b ;cursor data in A
 	locationLbl:
 			RR A
-			DJNZ R6,locationLbl
-			ORL A,#10000011b
-			MOV R6,A
-			Acall shiftR6 ; shift collumn data byte into SR
+			DJNZ R6,locationLbl  ;rotate cursor data equal to location
+			ORL A,#10000011b ;mask data for center 
+			MOV R6,A ; move cursor data to R6 for shift
+			Acall shiftR6 ; shift collumn data byte into SR for row enable
 			
 			SETB P3.2 ; cycle store clock
 			CLR P3.2
@@ -193,7 +211,7 @@ ISR_tmr1:
 		MOV TL1,#00h ;tmr0 LSB
 		
 		;DJNZ R5, afterRandom
-		
+		push Acc
 		
 		MOV A, 53h
 		MOV DPTR, #block0		; begin bij block0
@@ -205,16 +223,18 @@ ISR_tmr1:
 		MOV A, 53h ; retrieve current data offset
 		INC A; advance one adress
 		MOV 53h, A ; save current adress
-
+		MOV R3, 57h ;get current iteration from address
 		DJNZ R3, afterRandom ; jupmp back to te iteration
-		MOV R3,#4 ; repeat 4 times
+		MOV R3,#bytesPerBlock ; repeat 4 times
 		MOV A,18h ; get data from MSB LFSR
 		ANL A,#0111000b ;mask for the number of blocks		
 		MOV 53h, A ; save current adress for next block
-		LCALL LFSR  ; generate new random data
+
 		CPL P2.4 ; toggle led to see if working
 		;MOV R5,#2
 	afterRandom:
+		MOV 57h,R3
+		pop Acc
 		SETB TR1 ;stop timer during buffer update
 		SETB TR0
 		SETB EA
@@ -252,7 +272,14 @@ shiftR6:
 				DJNZ R6,Reg ;if 8 bits are shifted go further otherwise repeat
 				pop Acc
 				ret
-;Last line of code
+
+
+detectCollision:
+	
+
+
+
+
 
 
 dispRowShift:
@@ -265,12 +292,12 @@ dispRowShift:
 ;shift 7 MSB in framebuffer
 dispColShift:
 	MOV A, R7
-	MOV	R5, #07 ;counter to count rows
+	MOV	R5, #numberOfRows ;counter to count rows
 	;RRC A ;rotate to drop LSB
-	MOV R1, #52h ; start at highest address to decrease each time
+	MOV R1, #vidMemEnd ; start at highest address to decrease each time
 dispColShiftLoop:
 	RRC A ;Rotate LSB in carry to shift in row
-	MOV	R6, #05 ; counter to rotate 5 horizontal bytes
+	MOV	R6, #bytesPerRow ; counter to rotate 5 horizontal bytes
 	PUSH ACC ; push acc to save current data
 	ACALL dispRowShift ; rotate all row bytes
 	POP ACC
