@@ -27,6 +27,13 @@ LJMP ISR_tmr1
 ORG 0043h
 LJMP ISR_ADC
 ;Address declarations
+vidMemStart EQU 030h
+vidMemEnd EQU 052h
+vidMemLength EQU 35
+
+numberOfCollumns EQU 40
+numberOfRows EQU 7
+bytesPerRow EQU 5
 
 ;Constants
 
@@ -52,8 +59,8 @@ init:
 			 
 			 
 ;Initialize ram			 
-			MOV R0,#030h 
-			MOV R1,#040
+			MOV R0,#vidMemStart 
+			MOV R1,#numberOfCollumns
 ramInit:
 			MOV @R0,#0FFh
 			INC R0
@@ -62,7 +69,7 @@ ramInit:
 ; seed of LFSR		
 MOV 18h, #1101010b 
 
-MOV R0,#040
+MOV R0,#numberOfCollumns
 gameInit:
 		MOV R7,#03eh ; stockate data in R7 for collumnshift
 		LCALL dispColShift
@@ -110,12 +117,12 @@ ISR_tmr0:
 ;DISPLAY PART
 		CLR RS1 ;move to registerbank 08h to 0Fh
 		SETB RS0
-		MOV R1, #07 ;counting register to 8 for rows
+		MOV R1, #numberOfRows ;counting register to 8 for rows
 		MOV R2, #01111111b ;data rows (msb = 0, others are 1) single bit zero, to enable current row
-		MOV R0, #030h ; starting adress disp mem
+		MOV R0, #vidMemStart ; starting adress disp mem
 rowIteration:
 
-			MOV R7, #05 ; counter for 5 bytes of row data
+			MOV R7, #bytesPerRow ; counter for 5 bytes of row data
 lineBytes:
 			MOV A,@R0 ; get data from ram
 			MOV R6,A
