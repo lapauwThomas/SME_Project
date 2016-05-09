@@ -11,7 +11,14 @@
 
 ;Special register declarations
 $include (t89c51cc01.inc)
-	
+
+DSEG AT 30h
+
+	cursor DATA 54h
+	blockIndex DATA 53h
+	blockIteration DATA 57h
+	ADCVal DATA 5Ah
+CSEG	
 ;Boot code
 ORG 0000h
 LJMP init 
@@ -41,6 +48,7 @@ bytesPerRow EQU 5
 bytesPerBlock EQU 8
 	
 cursorByte EQU 11011111b
+cursorByteMask EQU 00100000b
 
 
 
@@ -84,7 +92,7 @@ gameInit:
 
 		MOV A,18h ; get data from MSB LFSR
 		ANL A,#0011100b ;mask for the number of blocks		
-		MOV 53h, A ; save current adress for next block
+		MOV blockIndex, A ; save current adress for next block
 
 
 ;**********************************************************************************
@@ -97,11 +105,11 @@ gameInit:
 		MOV R3,#bytesPerBlock ; repeat 4 times
 		MOV A,18h ; get data from MSB LFSR
 		ANL A,#0111000b ;mask for the number of blocks		
-		MOV 53h, A ; save current adress for next block
+		MOV blockIndex, A ; save current adress for next block
 		LCALL LFSR  ; generate new random data
 		CPL P2.4 ; toggle led to see if working
 
-		MOV 57h,R3
+		MOV blockIteration,R3
 	
 	
 
@@ -116,7 +124,7 @@ LJMP main
 ;Main program
 main:		
 				LCALL LFSR  ; generate new random data
-				
+;				LCALL detectCollision
 
 				
 			LJMP main
@@ -174,7 +182,7 @@ lastLineComp:			 ;loop to approximate the timing of the other rows to have simil
 			
 
 			;MOV R6, #11101111b
-			MOV A,5Ah
+			MOV A,ADCVal
 			ANL A, #11100000b ; mask 8 MSB 
 			RL A
 			RL A ;rotate so MSB become LSB
@@ -190,6 +198,8 @@ lastLineComp:			 ;loop to approximate the timing of the other rows to have simil
 			
 			SETB P3.2 ; cycle store clock
 			CLR P3.2
+			
+			LCALL detectCollision
 
 			CLR RS1 ;move to registerbank 00h to 08h
 			CLR RS0	
@@ -213,27 +223,27 @@ ISR_tmr1:
 		;DJNZ R5, afterRandom
 		push Acc
 		
-		MOV A, 53h
+		MOV A, blockIndex
 		MOV DPTR, #block0		; begin bij block0
 		MOVC A,@A+DPTR
 
 		MOV R7,A ; stockate data in R7 for collumnshift
 		LCALL dispColShift
 		
-		MOV A, 53h ; retrieve current data offset
+		MOV A, blockIndex ; retrieve current data offset
 		INC A; advance one adress
-		MOV 53h, A ; save current adress
-		MOV R3, 57h ;get current iteration from address
+		MOV blockIndex, A ; save current adress
+		MOV R3, blockIteration ;get current iteration from address
 		DJNZ R3, afterRandom ; jupmp back to te iteration
 		MOV R3,#bytesPerBlock ; repeat 4 times
 		MOV A,18h ; get data from MSB LFSR
 		ANL A,#0111000b ;mask for the number of blocks		
-		MOV 53h, A ; save current adress for next block
+		MOV blockIndex, A ; save current adress for next block
 
 		CPL P2.4 ; toggle led to see if working
 		;MOV R5,#2
 	afterRandom:
-		MOV 57h,R3
+		MOV blockIteration,R3
 		pop Acc
 		SETB TR1 ;stop timer during buffer update
 		SETB TR0
@@ -249,7 +259,7 @@ ISR_ADC:
 		
 push Acc
 	MOV A, ADDH
-	MOV 5Ah,A
+	MOV ADCVal,A
 	MOV ADCON, #00101111b ; set P1.0 as ADC input, restart conversion
 pop Acc
 
@@ -275,6 +285,39 @@ shiftR6:
 
 
 detectCollision:
+;	CLR TR0 ;stop timer during buffer update
+;	CLR TR1 ;stop timer during buffer update
+;	CLR EA ;global interrupt disable
+	
+	MOV R7,numberOfRows
+	MOV R0,vidMemStart
+	MOV R1,#0
+	iteration:
+	MOV A,@R0
+	ANL A,cursorByteMask
+	RLC A
+	RLC A
+	RLC A ;rotate until bit from mask is in Carry
+	MOV A,R1
+	RLC A ; rotate so carry comes in R1
+	MOV R1,A
+	MOV A,R0
+	ADD A,#bytesPerRow
+	MOV R0,A
+	DJNZ R7,iteration
+	
+	MOV A,cursor
+	CPL A
+	ANL A,R1
+	JNZ reset
+;	SETB TR0 ;stop timer during buffer update
+;	SETB TR1 ;stop timer during buffer update
+;	SETB EA ;global interrupt disable
+		
+	ret
+	
+reset:
+LJMP init
 	
 
 
