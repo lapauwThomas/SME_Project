@@ -183,14 +183,13 @@ lastLineComp:			 ;loop to approximate the timing of the other rows to have simil
 
 			;MOV R6, #11101111b
 			MOV A,ADCVal
-			ANL A, #11100000b ; mask 8 MSB 
-			RL A
-			RL A ;rotate so MSB become LSB
-			RL A
+			MOV B,#37
+			DIV AB
 			MOV R6, A ;stockate in R6
-			MOV A,#11111110b ;cursor data in A
+			MOV A,#11111101b ;cursor data in A
+
 	locationLbl:
-			RR A
+			RL A
 			DJNZ R6,locationLbl  ;rotate cursor data equal to location
 			ORL A,#00000001b ;mask data for center 
 			MOV R6,A ; move cursor data to R6 for shift
