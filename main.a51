@@ -83,11 +83,11 @@ ramInit:
 MOV 18h, #1101010b 
 
 
-MOV R0,#numberOfCollumns
-gameInit:
-		MOV R7,#03eh ; stockate data in R7 for collumnshift
-		LCALL dispColShift
-		DJNZ R0, gameInit
+;MOV R0,#numberOfCollumns
+;gameInit:
+;		MOV R7,#03eh ; stockate data in R7 for collumnshift
+;		LCALL dispColShift
+;		DJNZ R0, gameInit
 
 
 		MOV A,18h ; get data from MSB LFSR
@@ -112,6 +112,7 @@ gameInit:
 		MOV blockIteration,R3
 	
 		MOV ADCVal,#01100000b
+		MOV 2Ch,A
 
 
 SETB TR0 ;run tmr0
@@ -192,13 +193,14 @@ lastLineComp:			 ;loop to approximate the timing of the other rows to have simil
 			RL A
 			DJNZ R6,locationLbl  ;rotate cursor data equal to location
 			ORL A,#00000001b ;mask data for center 
-			MOV R6,A ; move cursor data to R6 for shift
-			Acall shiftR6 ; shift collumn data byte into SR for row enable
 			MOV cursor,A
+			MOV R6,A ; move cursor data to R6 for shift
+			
+			Acall shiftR6 ; shift collumn data byte into SR for row enable
+			LCALL detectCollision
 			SETB P3.2 ; cycle store clock
 			CLR P3.2
 			
-			LCALL detectCollision
 
 			CLR RS1 ;move to registerbank 00h to 08h
 			CLR RS0	
@@ -239,7 +241,7 @@ ISR_tmr1:
 		ANL A,#0111000b ;mask for the number of blocks		
 		MOV blockIndex, A ; save current adress for next block
 
-		CPL P2.4 ; toggle led to see if working
+		
 		;MOV R5,#2
 	afterRandom:
 		MOV blockIteration,R3
@@ -287,29 +289,45 @@ detectCollision:
 ;	CLR TR0 ;stop timer during buffer update
 ;	CLR TR1 ;stop timer during buffer update
 ;	CLR EA ;global interrupt disable
+	MOV A,34h
+	RRC A
+	MOV 67h,C
 	
-	MOV R7,numberOfRows
-	MOV R0,vidMemStart
-	MOV R1,#0
-	iteration:
-	MOV A,@R0
-	CPL A
-	ANL A,cursorByteMask
+	MOV A,39h
+	RRC A
+	MOV 66h,C
+	
+	MOV A,3Eh
+	RRC A
+	MOV 65h,C
+	
+	MOV A,43h
+	RRC A
+	MOV 64h,C
+	
+	MOV A,48h
+	RRC A
+	MOV 63h,C
+	
+	MOV A,4Dh
+	RRC A
+	MOV 62h,C
+	
+	MOV A,52h
+	RRC A
+	MOV 61h,C
 
-	RRC A ;rotate until bit from mask is in Carry
-	MOV A,R1
-	RLC A ; rotate so carry comes in R1
-	MOV R1,A
-	MOV A,R0
-	ADD A,#bytesPerRow
-	MOV R0,A
-	DJNZ R7,iteration
-	
+	CLR 60h
+	MOV A,2Ch
+	CPL A
+	MOV 2Ch,A
+
 	MOV A,cursor
 	CPL A
-	RR A
-	ANL A,R1
-	;JNZ reset
+	ANL A,#11111110b
+	ANL A,2Ch
+	
+	JNZ reset
 ;	SETB TR0 ;stop timer during buffer update
 ;	SETB TR1 ;stop timer during buffer update
 ;	SETB EA ;global interrupt disable
@@ -317,7 +335,14 @@ detectCollision:
 	ret
 	
 reset:
-LJMP init
+MOV R0,#numberOfCollumns
+gameReset:
+		MOV R7,#0FFh ; stockate data in R7 for collumnshift
+		LCALL dispColShift
+		DJNZ R0, gameReset
+LJMP ISR_tmr0
+
+
 	
 
 
