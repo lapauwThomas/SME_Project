@@ -223,6 +223,7 @@ ISR_tmr1:
 		;get the current block index from ram
 		MOV A, blockIndex
 		MOV DPTR, #block0		; start at block0 and count from there
+		MOVC A,@A+DPTR
 
 		MOV R7,A ; stockate data in R7 for collumnshift function
 		LCALL dispColShift ; shift the new collumn in
