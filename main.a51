@@ -175,9 +175,13 @@ lineBytes:
 			 ; repeat until 7 rows done
 			DJNZ R1, rowIteration
 
-blankDisplay:
-			MOV R6, #0FFh ; put all ones in the row select shift register = all off
+
+			MOV R1, #06
+blankDisplay:			 ;loop to approximate the timing of the other rows to have similar brightness
+			MOV R6, #0FFh
 			Acall shiftR6 ; shift collumn data byte into SR
+			DJNZ R1,blankDisplay
+			
 			SETB P3.2 ; cycle store clock
 			CLR P3.2
 			
