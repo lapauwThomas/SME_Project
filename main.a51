@@ -71,25 +71,7 @@ init:
 			MOV SP, #70h ; move stackpointer above registers
 			 
 			 
-;***************** Initialize ram to all ones (all leds off)*******************************		 
-			MOV R0,#vidMemStart 
-			MOV R1,#numberOfCollumns
-ramInit:
-			MOV @R0,#0FFh
-			INC R0
-			DJNZ R1,ramInit
-			
-;***************** Init the game logic	*************************
-MOV 18h, #1101010b 
-
-MOV R3,#bytesPerBlock ; repeat 4 times
-MOV A,18h ; get data from MSB LFSR
-ANL A,#0111000b ;mask for the number of blocks		
-MOV blockIndex, A ; save current adress for next block
-LCALL LFSR  ; generate new random data
-CPL P2.4 ; toggle led to see if working
-MOV blockIteration,R3
-
+	LCALL gameInit
 
 ;*********************** ADC CONFIG ***********************************************
 	; Setup for the ADC
@@ -114,7 +96,38 @@ main:
 ;does except update the random numbers actually everything happens timer based since the updating of either one is mutually exclusive, 
 ;no interrupt may happen while they are busy
 	LCALL LFSR ; update ranom value
-			LJMP main
+	JNB 59h, main ; if not game over go back to main
+				;this is the game over routine
+	CLR RS1 ;move to registerbank 00h to 08h
+	CLR RS0	
+	;stop timers shortly to not interrupt the vid mem update, this routine only happens when game over so no problem
+	CLR EA ;global interrupt disable since the video memory may not be updated while the screen is updated
+	CLR TR0 ;stop tmr0
+	CLR TR1
+			
+	MOV R0,#39
+	MOV R1,#0
+	MOV DPTR,#game_over
+gameOverLoop:
+	MOV A,R0
+	MOVC A,@A+DPTR
+	MOV R7,A
+	LCALL dispColShift
+	DJNZ R0,gameOverLoop
+	MOV A,R0
+	MOVC A,@A+DPTR
+	MOV R7,A
+	LCALL dispColShift
+	;restart the timers after update
+	SETB TR0 ;run tmr0
+	SETB TR1
+	SETB EA ;global interrupt enable
+
+	LCALL delay
+	LCALL gameInit
+	CLR 59h 
+	
+	LJMP main
 		
 ;******************************* Interrupt handlers *********************************
 
@@ -161,16 +174,22 @@ lineBytes:
 			MOV R2,A
 			 ; repeat until 7 rows done
 			DJNZ R1, rowIteration
+
+blankDisplay:
+			MOV R6, #0FFh ; put all ones in the row select shift register = all off
+			Acall shiftR6 ; shift collumn data byte into SR
+			SETB P3.2 ; cycle store clock
+			CLR P3.2
 			
-			
+			JB 59h,afterCollision ; if game over skip the cursor
 	;This part displays the cursor, making use of the duty cycle of the previous display part over the timerperiod,
 	;the bringhtness of the cursor can be controlled
 	
 			MOV R1, #04  ;the first 4 bytes that are shifted into the register puts all those leds off
-lastLineComp:			 ;loop to approximate the timing of the other rows to have similar brightness
+cursorLbl:			 ;loop to approximate the timing of the other rows to have similar brightness
 			MOV R6, #0FFh
 			Acall shiftR6 ; shift collumn data byte into SR
-			DJNZ R1,lastLineComp
+			DJNZ R1,cursorLbl
 			
 			MOV R6, #cursorByte ;shift this byte into the shift registers to enable a led in the eight row of the display to be matched with the cursor location
 			Acall shiftR6 ; shift collumn data byte into SR
@@ -196,7 +215,7 @@ lastLineComp:			 ;loop to approximate the timing of the other rows to have simil
 			
 			
 			LCALL detectCollision ; check if a collision with the background happened with the current cursor position ;TODO: mag evt na de timers geplaatst worden
-			
+			afterCollision:
 
 			CLR RS1 ;move to registerbank 00h to 08h
 			CLR RS0	
@@ -219,11 +238,11 @@ ISR_tmr1:
 		MOV TL1,#00h ;tmr0 LSB
 		
 		push Acc
-		
+		JB 59h,afterRandom
 		;get the current block index from ram
 		MOV A, blockIndex
 		MOV DPTR, #block0		; start at block0 and count from there
-
+		MOVC A,@A+DPTR
 		MOV R7,A ; stockate data in R7 for collumnshift function
 		LCALL dispColShift ; shift the new collumn in
 		
@@ -341,13 +360,38 @@ detectCollision:
 ;***************** This routine is executed when a collision is detected ********************
 dead:
 
-; this clear the game field
+; this clear the game field in ram
 MOV R0,#numberOfCollumns
 gameReset:
 		MOV R7,#0FFh ; stockate data in R7 for collumnshift
 		LCALL dispColShift
 		DJNZ R0, gameReset
-LJMP ISR_tmr0 ;jump to restart the game
+SETB 59h ;set game over state
+ret ;return to caller (ISR_tmr0)
+
+
+gameInit:
+;***************** Initialize ram to all ones (all leds off)*******************************		 
+			MOV R0,#vidMemStart 
+			MOV R1,#numberOfCollumns
+ramInit:
+			MOV @R0,#0FFh
+			INC R0
+			DJNZ R1,ramInit
+			
+;***************** Init the game logic	*************************
+MOV 18h, #1101010b 
+
+MOV R3,#bytesPerBlock ; repeat 4 times
+MOV A,18h ; get data from MSB LFSR
+ANL A,#0111000b ;mask for the number of blocks		
+MOV blockIndex, A ; save current adress for next block
+LCALL LFSR  ; generate new random data
+CPL P2.4 ; toggle led to see if working
+MOV blockIteration,R3
+
+ret
+
 
 
 	
@@ -358,7 +402,6 @@ LJMP ISR_tmr0 ;jump to restart the game
 dispColShift:
 	MOV A, R7 ; move the collumn that needs to be shifted in from R7 into A
 	MOV	R5, #numberOfRows ;counter to count rows 
-	;RRC A ;rotate to drop LSB ;TODO check if still needed
 	MOV R1, #vidMemStart ; start at lowest address to increase each time
 dispColShiftLoop: ; this part is looped
 	RRC A ;Rotate LSB in carry to shift into the row
@@ -385,17 +428,22 @@ dispRowShift: ; this rotates the carry into the current memory address
 	
 ;rudimentary delay for test purposes
 delay:	 
-		MOV R6, #09Fh
+		MOV R5, #0Fh
 		LCALL loop
 		RET
 
 loop: 	
-		MOV R7, #00h
+		MOV R6, #00h
 		LCALL loop2
-		DJNZ R1, loop
+		DJNZ R5, loop
+		RET
+loop2: 	
+		MOV R7, #00h
+		LCALL loop3
+		DJNZ R6, loop2
 		RET
 		
-loop2:	DJNZ R2,loop2
+loop3:	DJNZ R7,loop3
 		RET
 		
 ;**********************************************************************************		
@@ -544,6 +592,103 @@ LFSRShift:
 	db 0x3e
 	db 0x3e
 		
+;Letters
+game_over:
+
+	;;r
+	;db 11010011b
+	db 11001011b
+	;db 10101111b
+	db 11110101b
+	;db 10101111b
+	db 11110101b
+	;db 10000011b
+	db 11000001b
+		;;e
+	;db 10111011b
+	db 11111111b
+	;db 10101011b
+	db 11010101b
+	;db 10101011b
+	db 11010101b
+	;db 10000011b
+	db 11000001b
+	;db 11111111b
+	db 11111111b
+	
+	;;v
+	;db 10000111b
+	db 11100001b
+	;db 11111011b
+	db 11011111b
+	;db 11111011b
+	db 11011111b
+	;db 10000111b
+	db 11100001b
+	;db 11111111b
+	db 11111111b
+		
+	;;o
+	;db 10000011b
+	db 11000001b
+	;db 10111011b
+	db 11011101b
+	;db 10111011b
+	db 11011101b
+	;db 10000011b
+	db 11000001b
+	;db 11111111b	
+	db 11111111b
+	;;space
+	;db 11111111b	
+	db 11111111b
+			;;e
+	;db 10111011b
+	db 11111111b
+	;db 10101011b
+	db 11010101b
+	;db 10101011b
+	db 11010101b
+	;db 10000011b
+	db 11000001b
+	;db 11111111b
+	db 11111111b
+		
+	;;m	
+	;db 10000011b
+	db 11000001b	
+	;db 11011111b
+	db 11111011b
+	;db 11101111b
+	db 11110111b
+	;db 11011111b
+	db 11111011b
+	;db 10000011b	
+	db 11000001b
+	;db 11111111b
+	db 11111111b
+	;;a
+	;db 11000011b 
+	db 11000011b
+	;db 10101111b
+	db 11110101b
+	;db 10101111b
+	db 11110101b
+	;db 11000011b
+	db 11000011b
+	;db 11111111b
+	db 11111111b	
+
+;;G
+	;db 10100011b ;LSB does not matter 
+	db 11000101b
+	;db 10101011b
+	db 11010101b
+	;db 10111011b
+	db 11011101b
+	;db 10000011b
+	db 11000001b
+
 		
 
 END

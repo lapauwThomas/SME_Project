@@ -1,4 +1,4 @@
-A51 MACRO ASSEMBLER  MAIN                                                                 05/13/2016 16:04:26 PAGE     1
+A51 MACRO ASSEMBLER  MAIN                                                                 05/18/2016 12:13:44 PAGE     1
 
 
 MACRO ASSEMBLER A51 V8.02c
@@ -65,7 +65,7 @@ LOC  OBJ            LINE     SOURCE
   0087          +1    55     PCON    DATA    87H
   008F          +1    56     CKCON   DATA    8FH
                 +1    57     
-A51 MACRO ASSEMBLER  MAIN                                                                 05/13/2016 16:04:26 PAGE     2
+A51 MACRO ASSEMBLER  MAIN                                                                 05/18/2016 12:13:44 PAGE     2
 
                 +1    58     ;------------------ TIMERS registers ---------------------
   0088          +1    59     TCON    DATA    88H
@@ -133,7 +133,7 @@ LOC  OBJ            LINE     SOURCE
   008E          +1   121     AUXR    DATA    8EH
   00A2          +1   122     AUXR1   DATA    0A2H
                 +1   123     
-A51 MACRO ASSEMBLER  MAIN                                                                 05/13/2016 16:04:26 PAGE     3
+A51 MACRO ASSEMBLER  MAIN                                                                 05/18/2016 12:13:44 PAGE     3
 
                 +1   124     ;-------------------- IT registers -----------------------
   00F8          +1   125     IPL1    DATA    0F8H    
@@ -201,7 +201,7 @@ LOC  OBJ            LINE     SOURCE
   00AD          +1   187     CANTIMH         DATA    0ADH    
   00AE          +1   188     CANSTMPL        DATA    0AEH    
   00AF          +1   189     CANSTMPH        DATA    0AFH
-A51 MACRO ASSEMBLER  MAIN                                                                 05/13/2016 16:04:26 PAGE     4
+A51 MACRO ASSEMBLER  MAIN                                                                 05/18/2016 12:13:44 PAGE     4
 
   00B1          +1   190     CANPAGE         DATA    0B1H
   00B2          +1   191     CANSTCH         DATA    0B2H    
@@ -241,13 +241,13 @@ LOC  OBJ            LINE     SOURCE
                      225     
                      226     ;Interrupt address vectors
 000B                 227     ORG 000Bh
-000B 02009B          228     LJMP ISR_tmr0
+000B 0200AB          228     LJMP ISR_tmr0
                      229     
 001B                 230     ORG 001Bh
-001B 0200F8          231     LJMP ISR_tmr1
+001B 020113          231     LJMP ISR_tmr1
                      232     
 0043                 233     ORG 0043h
-0043 02012C          234     LJMP ISR_ADC
+0043 02014A          234     LJMP ISR_ADC
                      235     
                      236     
                      237     
@@ -269,12 +269,12 @@ LOC  OBJ            LINE     SOURCE
                      253     
                      254     
                      255     
-A51 MACRO ASSEMBLER  MAIN                                                                 05/13/2016 16:04:26 PAGE     5
+A51 MACRO ASSEMBLER  MAIN                                                                 05/18/2016 12:13:44 PAGE     5
 
                      256     ;Initialization code
 0046                 257     init:   
                      258     
-                     259                             ;init tmr0
+                     259     ;**************** Init Timers **********************************
 0046 758911          260                             MOV TMOD,#00010001b ;config tmr0 & tmr1 in 16bit mode
 0049 758CFF          261                             MOV TH0,#0FFh ;tmr0 MSB
 004C 758AFF          262                             MOV TL0,#0FFh ;tmr0 LSB
@@ -289,492 +289,697 @@ LOC  OBJ            LINE     SOURCE
 0059 758170          271                             MOV SP, #70h ; move stackpointer above registers
                      272                              
                      273                              
-                     274     ;Initialize ram                  
-005C 7830            275                             MOV R0,#vidMemStart 
-005E 7928            276                             MOV R1,#numberOfCollumns
-0060                 277     ramInit:
-0060 76FF            278                             MOV @R0,#0FFh
-0062 08              279                             INC R0
-0063 D9FB            280                             DJNZ R1,ramInit
-                     281                             
-                     282     ; seed of LFSR          
-0065 75186A          283     MOV 18h, #1101010b 
-                     284     
+005C 1201B3          274             LCALL gameInit
+                     275     
+                     276     ;*********************** ADC CONFIG ***********************************************
+                     277             ; Setup for the ADC
+005F 75F6FF          278             MOV ADCF,#0FFh ;enable the adc...
+0062 D2E9            279             SETB EADC
+0064 75F32F          280             MOV ADCON, #00101111b ; set P1.0 as ADC input
+0067 755A60          281             MOV ADCVal,#01100000b
+                     282     
+                     283             
+                     284     ;************* end of init: enable timers *********************
                      285     
-                     286     ;MOV R0,#numberOfCollumns
-                     287     ;gameInit:
-                     288     ;               MOV R7,#03eh ; stockate data in R7 for collumnshift
-                     289     ;               LCALL dispColShift
-                     290     ;               DJNZ R0, gameInit
-                     291     
+006A D28C            286     SETB TR0 ;run tmr0
+006C D28E            287     SETB TR1
+006E D2AF            288     SETB EA ;global interrupt enable
+                     289     
+0070 C2A3            290     CLR P2.3 ;led to see if code is running
+0072 020075          291     LJMP main
                      292     
-0068 E518            293                     MOV A,18h ; get data from MSB LFSR
-006A 541C            294                     ANL A,#0011100b ;mask for the number of blocks          
-006C F553            295                     MOV blockIndex, A ; save current adress for next block
-                     296     
-                     297     
-                     298     ;**********************************************************************************
-                     299             ; Setup for the ADC
-006E 75F6FF          300             MOV ADCF,#0FFh ;enable the adc...
-0071 D2E9            301             SETB EADC
-0073 75F32F          302             MOV ADCON, #00101111b ; set P1.0 as ADC input
-                     303     
-                     304     
-0076 7B08            305                     MOV R3,#bytesPerBlock ; repeat 4 times
-0078 E518            306                     MOV A,18h ; get data from MSB LFSR
-007A 5438            307                     ANL A,#0111000b ;mask for the number of blocks          
-007C F553            308                     MOV blockIndex, A ; save current adress for next block
-007E 1201BE          309                     LCALL LFSR  ; generate new random data
-0081 B2A4            310                     CPL P2.4 ; toggle led to see if working
-                     311     
-0083 8B57            312                     MOV blockIteration,R3
-                     313             
-0085 755A60          314                     MOV ADCVal,#01100000b
-0088 F52C            315                     MOV 2Ch,A
-                     316     
-                     317     
-008A D28C            318     SETB TR0 ;run tmr0
-008C D28E            319     SETB TR1
-008E D2AF            320     SETB EA ;global interrupt enable
-                     321     
-A51 MACRO ASSEMBLER  MAIN                                                                 05/13/2016 16:04:26 PAGE     6
+                     293                             
+                     294     ;*********************************Main program***************************************
+0075                 295     main:           
+                     296     ;does except update the random numbers actually everything happens timer based since the up
+                             dating of either one is mutually exclusive, 
+                     297     ;no interrupt may happen while they are busy
+0075 120200          298             LCALL LFSR ; update ranom value
+0078 3059FA          299             JNB 59h, main ; if not game over go back to main
+                     300                                     ;this is the game over routine
+007B C2D4            301             CLR RS1 ;move to registerbank 00h to 08h
+007D C2D3            302             CLR RS0 
+                     303             ;stop timers shortly to not interrupt the vid mem update, this routine only happens
+                              when game over so no problem
+007F C2AF            304             CLR EA ;global interrupt disable since the video memory may not be updated while th
+                             e screen is updated
+0081 C28C            305             CLR TR0 ;stop tmr0
+0083 C28E            306             CLR TR1
+                     307                             
+0085 7827            308             MOV R0,#39
+0087 7900            309             MOV R1,#0
+0089 900280          310             MOV DPTR,#game_over
+008C                 311     gameOverLoop:
+008C E8              312             MOV A,R0
+008D 93              313             MOVC A,@A+DPTR
+008E FF              314             MOV R7,A
+008F 1201CF          315             LCALL dispColShift
+0092 D8F8            316             DJNZ R0,gameOverLoop
+0094 E8              317             MOV A,R0
+0095 93              318             MOVC A,@A+DPTR
+A51 MACRO ASSEMBLER  MAIN                                                                 05/18/2016 12:13:44 PAGE     6
 
-0090 C2A3            322     CLR P2.3 ;led to see if code is running
-0092 020095          323     LJMP main
-                     324                             
-                     325     ;Main program
-0095                 326     main:           
-0095 1201BE          327                                     LCALL LFSR  ; generate new random data
-                     328     ;                               LCALL detectCollision
-                     329     
-                     330                                     
-0098 020095          331                             LJMP main
-                     332                     
-                     333     ;Interrupt handlers
-                     334     
-                     335     
-009B                 336     ISR_tmr0: 
-009B C2AF            337                             CLR EA ;global interrupt disable
-009D C28C            338                             CLR TR0 ;stop tmr0
-009F C28E            339                             CLR TR1
-                     340                             ;reload timer
-00A1 758CD0          341                             MOV TH0,#0D0h ;tmr0 MSB
-00A4 758A00          342                             MOV TL0,#000h ;tmr0 LSB
-                     343                             
-                     344     ;DISPLAY PART
-00A7 C2D4            345                     CLR RS1 ;move to registerbank 08h to 0Fh
-00A9 D2D3            346                     SETB RS0
-00AB 7907            347                     MOV R1, #numberOfRows ;counting register to 8 for rows
-00AD 7A7F            348                     MOV R2, #01111111b ;data rows (msb = 0, others are 1) single bit zero, to e
+0096 FF              319             MOV R7,A
+0097 1201CF          320             LCALL dispColShift
+                     321             ;restart the timers after update
+009A D28C            322             SETB TR0 ;run tmr0
+009C D28E            323             SETB TR1
+009E D2AF            324             SETB EA ;global interrupt enable
+                     325     
+00A0 1201E7          326             LCALL delay
+00A3 1201B3          327             LCALL gameInit
+00A6 C259            328             CLR 59h 
+                     329             
+00A8 020075          330             LJMP main
+                     331                     
+                     332     ;******************************* Interrupt handlers *********************************
+                     333     
+                     334     ; This timer refreshes the screen at a fast enough rate
+                     335     ; it gets the data from the ram and shifts it onto the display.
+                     336     ; based on the value of the ADC it also shows the cursor on the correct location.  
+00AB                 337     ISR_tmr0: 
+00AB C2AF            338                             CLR EA ;global interrupt disable since the video memory may not be 
+                             updated while the screen is updated
+00AD C28C            339                             CLR TR0 ;stop tmr0
+00AF C28E            340                             CLR TR1
+                     341                             
+                     342                             ;reload timer0
+00B1 758CD0          343                             MOV TH0,#0D0h ;tmr0 MSB
+00B4 758A00          344                             MOV TL0,#000h ;tmr0 LSB
+                     345                             
+                     346     ;DISPLAY PART
+00B7 C2D4            347                     CLR RS1 ;move to registerbank 08h to 0Fh to prevent overwriting of register
+                             s
+00B9 D2D3            348                     SETB RS0
+                     349                     
+                     350             ;This parts displays the game background on the screen from ram
+00BB 7907            351                     MOV R1, #numberOfRows ;counting register to 8 for rows
+00BD 7A7F            352                     MOV R2, #01111111b ;data rows (msb = 0, others are 1) single bit zero, to e
                              nable current row
-00AF 7830            349                     MOV R0, #vidMemStart ; starting adress disp mem
-00B1                 350     rowIteration:
-                     351     
-00B1 7F05            352                             MOV R7, #bytesPerRow ; counter for 5 bytes of row data
-00B3                 353     lineBytes:
-00B3 E6              354                             MOV A,@R0 ; get data from ram
-00B4 FE              355                             MOV R6,A
-00B5 3144            356                             acall shiftR6 ; shift byte into ram
-00B7 08              357                             INC R0 ; get next byte
-00B8 DFF9            358                             DJNZ R7,lineBytes ; rinse and repeat
-                     359                             
-                     360                             ;shift R2 with the current row enable in the register
-00BA EA              361                             MOV A,R2
-00BB FE              362                             MOV R6, A
-00BC 3144            363                             Acall shiftR6 ; shift column data byte into SR
-00BE D2B2            364                             SETB P3.2 ; cycle store clock
-00C0 C2B2            365                             CLR P3.2
-                     366     
-                     367                             ;rotate row bit to enable next row
-00C2 EA              368                             MOV A, R2 
-00C3 03              369                             RR A
-00C4 FA              370                             MOV R2,A
-                     371                              ; repeat until 7 rows done
-00C5 D9EA            372                             DJNZ R1, rowIteration
-                     373                             
-                     374                             
-                     375     
-00C7 7904            376                             MOV R1, #04
-00C9                 377     lastLineComp:                    ;loop to approximate the timing of the other rows to have 
-                             similar brightness
-00C9 7EFF            378                             MOV R6, #0FFh
-00CB 3144            379                             Acall shiftR6 ; shift collumn data byte into SR
-00CD D9FA            380                             DJNZ R1,lastLineComp
-00CF 7EFE            381                                                     MOV R6, #cursorByte
-00D1 3144            382                             Acall shiftR6 ; shift collumn data byte into SR
+00BF 7830            353                     MOV R0, #vidMemStart ; starting adress disp mem
+00C1                 354     rowIteration:
+                     355     
+00C1 7F05            356                             MOV R7, #bytesPerRow ; counter for 5 bytes of row data
+00C3                 357     lineBytes:
+00C3 E6              358                             MOV A,@R0 ; get data from ram starting at the lowest address
+00C4 FE              359                             MOV R6,A ; move data to R6 to shift it into the screen
+00C5 3162            360                             acall shiftR6 ; shift byte into screen
+00C7 08              361                             INC R0 ; increase address by one for next byte to put onto the scre
+                             en
+00C8 DFF9            362                             DJNZ R7,lineBytes ; rinse and repeat for the full row
+                     363                             
+                     364                             ;shift R2 with the current row enabled in the register
+00CA EA              365                             MOV A,R2
+00CB FE              366                             MOV R6, A
+00CC 3162            367                             Acall shiftR6 ; shift column data byte into SR
+00CE D2B2            368                             SETB P3.2 ; cycle store clock
+00D0 C2B2            369                             CLR P3.2
+                     370     
+                     371                             ;rotate row bit to enable next row
+00D2 EA              372                             MOV A, R2 
+00D3 03              373                             RR A
+00D4 FA              374                             MOV R2,A
+                     375                              ; repeat until 7 rows done
+00D5 D9EA            376                             DJNZ R1, rowIteration
+                     377     
+00D7                 378     blankDisplay:
+00D7 7EFF            379                             MOV R6, #0FFh ; put all ones in the row select shift register = all
+                              off
+A51 MACRO ASSEMBLER  MAIN                                                                 05/18/2016 12:13:44 PAGE     7
+
+00D9 3162            380                             Acall shiftR6 ; shift collumn data byte into SR
+00DB D2B2            381                             SETB P3.2 ; cycle store clock
+00DD C2B2            382                             CLR P3.2
                      383                             
-                     384     
-                     385                             ;MOV R6, #11101111b
-A51 MACRO ASSEMBLER  MAIN                                                                 05/13/2016 16:04:26 PAGE     7
-
-00D3 E55A            386                             MOV A,ADCVal
-00D5 75F025          387                             MOV B,#37
-00D8 84              388                             DIV AB
-00D9 FE              389                             MOV R6, A ;stockate in R6
-00DA 74FD            390                             MOV A,#11111101b ;cursor data in A
-                     391     
-00DC                 392             locationLbl:
-00DC 23              393                             RL A
-00DD DEFD            394                             DJNZ R6,locationLbl  ;rotate cursor data equal to location
-00DF 4401            395                             ORL A,#00000001b ;mask data for center 
-00E1 F554            396                             MOV cursor,A
-00E3 FE              397                             MOV R6,A ; move cursor data to R6 for shift
-                     398                             
-00E4 3144            399                             Acall shiftR6 ; shift collumn data byte into SR for row enable
-00E6 120155          400                             LCALL detectCollision
-00E9 D2B2            401                             SETB P3.2 ; cycle store clock
-00EB C2B2            402                             CLR P3.2
-                     403                             
+00DF 205926          384                             JB 59h,afterCollision ; if game over skip the cursor
+                     385             ;This part displays the cursor, making use of the duty cycle of the previous displa
+                             y part over the timerperiod,
+                     386             ;the bringhtness of the cursor can be controlled
+                     387             
+00E2 7904            388                             MOV R1, #04  ;the first 4 bytes that are shifted into the register 
+                             puts all those leds off
+00E4                 389     cursorLbl:                       ;loop to approximate the timing of the other rows to have 
+                             similar brightness
+00E4 7EFF            390                             MOV R6, #0FFh
+00E6 3162            391                             Acall shiftR6 ; shift collumn data byte into SR
+00E8 D9FA            392                             DJNZ R1,cursorLbl
+                     393                             
+00EA 7EFE            394                             MOV R6, #cursorByte ;shift this byte into the shift registers to en
+                             able a led in the eight row of the display to be matched with the cursor location
+00EC 3162            395                             Acall shiftR6 ; shift collumn data byte into SR
+                     396                             
+                     397     
+                     398                             ;MOV R6, #11101111b
+00EE E55A            399                             MOV A,ADCVal ;get the last updated value of the adc to A
+00F0 75F025          400                             MOV B,#37 
+00F3 84              401                             DIV AB ;divide the ADC value to get a value between 0 and 6 to for 
+                             the cursor position
+00F4 FE              402                             MOV R6, A ;stockate in R6
+00F5 74FD            403                             MOV A,#11111101b ;A single pixel for the row enable
                      404     
-00ED C2D4            405                             CLR RS1 ;move to registerbank 00h to 08h
-00EF C2D3            406                             CLR RS0 
-                     407                             ;reenable timers
-00F1 D28C            408                             SETB TR0 ;run tmr0
-00F3 D28E            409                             SETB TR1
-00F5 D2AF            410                             SETB EA ;global interrupt disable
+00F7                 405             locationLbl:
+00F7 23              406                             RL A
+00F8 DEFD            407                             DJNZ R6,locationLbl  ;rotate cursor data equal to location previous
+                             ly calculated
+00FA 4401            408                             ORL A,#00000001b ;mask data over the display       ;TODO: mag evt w
+                             eg
+00FC F554            409                             MOV cursor,A
+00FE FE              410                             MOV R6,A ; move cursor data to R6 for shift
                      411                             
-00F7 32              412                             RETI
-                     413     
-                     414     
-00F8                 415     ISR_tmr1:
-                     416     ;DISPLAY PART
-00F8 C28C            417                     CLR TR0 ;stop timer during buffer update
-00FA C28E            418                     CLR TR1 ;stop timer during buffer update
-00FC C2AF            419                     CLR EA ;global interrupt disable
-                     420                     
-00FE 758D00          421                     MOV TH1,#00h ;tmr0 MSB
-0101 758B00          422                     MOV TL1,#00h ;tmr0 LSB
-                     423                     
-                     424                     ;DJNZ R5, afterRandom
-0104 C0E0            425                     push Acc
-                     426                     
-0106 E553            427                     MOV A, blockIndex
-0108 9001F6          428                     MOV DPTR, #block0               ; begin bij block0
-010B 93              429                     MOVC A,@A+DPTR
-                     430     
-010C FF              431                     MOV R7,A ; stockate data in R7 for collumnshift
-010D 12019C          432                     LCALL dispColShift
-                     433                     
-0110 E553            434                     MOV A, blockIndex ; retrieve current data offset
-0112 04              435                     INC A; advance one adress
-0113 F553            436                     MOV blockIndex, A ; save current adress
-0115 AB57            437                     MOV R3, blockIteration ;get current iteration from address
-0117 DB08            438                     DJNZ R3, afterRandom ; jupmp back to te iteration
-0119 7B08            439                     MOV R3,#bytesPerBlock ; repeat 4 times
-011B E518            440                     MOV A,18h ; get data from MSB LFSR
-011D 5438            441                     ANL A,#0111000b ;mask for the number of blocks          
-011F F553            442                     MOV blockIndex, A ; save current adress for next block
-                     443     
-                     444                     
-                     445                     ;MOV R5,#2
-0121                 446             afterRandom:
-0121 8B57            447                     MOV blockIteration,R3
-0123 D0E0            448                     pop Acc
-0125 D28E            449                     SETB TR1 ;stop timer during buffer update
-0127 D28C            450                     SETB TR0
-0129 D2AF            451                     SETB EA
-A51 MACRO ASSEMBLER  MAIN                                                                 05/13/2016 16:04:26 PAGE     8
+00FF 3162            412                             Acall shiftR6 ; shift cursor position data byte into SR for row ena
+                             ble
+0101 D2B2            413                             SETB P3.2 ; cycle store clock
+0103 C2B2            414                             CLR P3.2
+                     415                             
+                     416                             
+0105 120173          417                             LCALL detectCollision ; check if a collision with the background ha
+                             ppened with the current cursor position ;TODO: mag evt na de timers geplaatst worden
+0108                 418                             afterCollision:
+                     419     
+0108 C2D4            420                             CLR RS1 ;move to registerbank 00h to 08h
+010A C2D3            421                             CLR RS0 
+                     422                             ;reenable timers
+010C D28C            423                             SETB TR0 ;run tmr0
+010E D28E            424                             SETB TR1
+0110 D2AF            425                             SETB EA ;global interrupt disable
+                     426                             
+0112 32              427                             RETI
+                     428     
+                     429     ;************************** This timers updates the background of the game ****************
+                             ******************
+0113                 430     ISR_tmr1:
+                     431     ;DISPLAY PART
+0113 C28C            432                     CLR TR0 ;stop timer during buffer update
+0115 C28E            433                     CLR TR1 ;stop timer during buffer update
+0117 C2AF            434                     CLR EA ;global interrupt disable
+                     435                     
+A51 MACRO ASSEMBLER  MAIN                                                                 05/18/2016 12:13:44 PAGE     8
 
-                     452     
-012B 32              453     reti
-                     454     
-012C                 455     ISR_ADC:
-                     456     
-012C C28C            457                     CLR TR0 ;stop timer during buffer update
-012E C28E            458                     CLR TR1 ;stop timer during buffer update
-0130 C2AF            459                     CLR EA ;global interrupt disable
-                     460                     
-0132 C0E0            461     push Acc
-0134 E5F5            462             MOV A, ADDH
-0136 F55A            463             MOV ADCVal,A
-0138 75F32F          464             MOV ADCON, #00101111b ; set P1.0 as ADC input, restart conversion
-013B D0E0            465     pop Acc
-                     466     
-013D D28E            467                     SETB TR1 ;stop timer during buffer update
-013F D28C            468                     SETB TR0
-0141 D2AF            469                     SETB EA
-0143 32              470     reti
-                     471     
+                     436                     ;reload timers
+0119 758D00          437                     MOV TH1,#00h ;tmr0 MSB
+011C 758B00          438                     MOV TL1,#00h ;tmr0 LSB
+                     439                     
+011F C0E0            440                     push Acc
+0121 20591B          441                     JB 59h,afterRandom
+                     442                     ;get the current block index from ram
+0124 E553            443                     MOV A, blockIndex
+0126 900238          444                     MOV DPTR, #block0               ; start at block0 and count from there
+0129 93              445                     MOVC A,@A+DPTR
+012A FF              446                     MOV R7,A ; stockate data in R7 for collumnshift function
+012B 1201CF          447                     LCALL dispColShift ; shift the new collumn in
+                     448                     
+012E E553            449                     MOV A, blockIndex ; retrieve current data offset
+0130 04              450                     INC A; advance one adress
+0131 F553            451                     MOV blockIndex, A ; save current adress
+                     452                     
+0133 AB57            453                     MOV R3, blockIteration ;get current iteration from address this counts the 
+                             number of collumns from a certain block that have already been shifted
+                     454                     
+0135 DB08            455                     DJNZ R3, afterRandom ; if the last collumn of the block is not updated jump
+                              over the generation of the next block
+                     456                     
+0137 7B08            457                     MOV R3,#bytesPerBlock ; repeat 4 times
+0139 E518            458                     MOV A,18h ; get data from MSB LFSR
+013B 5438            459                     ANL A,#0111000b ;mask for the number of blocks  instead of dividing, this k
+                             eeps 8 possible values for the 8 blocks,
+                     460                                                     ;with a distance of 8 from each other match
+                             ing the number of collumns of a block
+013D F553            461                     MOV blockIndex, A ; save current adress for next block
+                     462     
+013F                 463             afterRandom:
+013F 8B57            464                     MOV blockIteration,R3 ;this saves the current shifted collumn count of a bl
+                             ock in ram 
+                     465                     ;pop A and restart timers
+0141 D0E0            466                     pop Acc
+0143 D28E            467                     SETB TR1 
+0145 D28C            468                     SETB TR0
+0147 D2AF            469                     SETB EA
+                     470     
+0149 32              471     reti
                      472     
-                     473     ;Shift byte from R6 into shift registers
-0144                 474     shiftR6:
-0144 C0E0            475                                     push Acc
-0146 EE              476                                     MOV A, R6 
-0147 7E08            477                                     MOV R6, #08 ;counting register to 8
-0149                 478                                     Reg:
-0149 13              479                                     RRC A ;rotate accumulator
-014A 92C1            480                                     MOV P4.1,C ;carry to Data
-014C D2C0            481                                     SETB P4.0 ; cycle serial clock
-014E C2C0            482                                     CLR P4.0
-0150 DEF7            483                                     DJNZ R6,Reg ;if 8 bits are shifted go further otherwise rep
-                             eat
-0152 D0E0            484                                     pop Acc
-0154 22              485                                     ret
+                     473     
+                     474     ;*********************** This interrupt updates the value from the ADC ********************
+                             **************
+014A                 475     ISR_ADC:
+                     476     
+014A C28C            477                     CLR TR0 ;stop timer during buffer update
+014C C28E            478                     CLR TR1 ;stop timer during buffer update
+014E C2AF            479                     CLR EA ;global interrupt disable
+                     480                     
+0150 C0E0            481     push Acc
+0152 E5F5            482             MOV A, ADDH ;get the highest 8 bits, low resolution is not needed,
+0154 F55A            483             MOV ADCVal,A ; move the value to ram
+0156 75F32F          484             MOV ADCON, #00101111b ; set P1.0 as ADC input, restart conversion
+0159 D0E0            485     pop Acc
                      486     
-                     487     
-0155                 488     detectCollision:
-                     489     ;       CLR TR0 ;stop timer during buffer update
-                     490     ;       CLR TR1 ;stop timer during buffer update
-                     491     ;       CLR EA ;global interrupt disable
-0155 E534            492             MOV A,34h
-0157 13              493             RRC A
-0158 9267            494             MOV 67h,C
-                     495             
-015A E539            496             MOV A,39h
-015C 13              497             RRC A
-015D 9266            498             MOV 66h,C
-                     499             
-015F E53E            500             MOV A,3Eh
-0161 13              501             RRC A
-0162 9265            502             MOV 65h,C
-                     503             
-0164 E543            504             MOV A,43h
-0166 13              505             RRC A
-0167 9264            506             MOV 64h,C
-                     507             
-0169 E548            508             MOV A,48h
-016B 13              509             RRC A
-016C 9263            510             MOV 63h,C
-                     511             
-016E E54D            512             MOV A,4Dh
-0170 13              513             RRC A
-0171 9262            514             MOV 62h,C
-                     515             
-0173 E552            516             MOV A,52h
-A51 MACRO ASSEMBLER  MAIN                                                                 05/13/2016 16:04:26 PAGE     9
+015B D28E            487                     SETB TR1 ;stop timer during buffer update
+015D D28C            488                     SETB TR0
+015F D2AF            489                     SETB EA
+0161 32              490     reti
+                     491     
+                     492     
+                     493     ;******************************************************************************************
+                             ************
+                     494     ;********************************* HELPER FUNCTIONS ***************************************
+A51 MACRO ASSEMBLER  MAIN                                                                 05/18/2016 12:13:44 PAGE     9
 
-0175 13              517             RRC A
-0176 9261            518             MOV 61h,C
-                     519     
-0178 C260            520             CLR 60h
-017A E52C            521             MOV A,2Ch
-017C F4              522             CPL A
-017D F52C            523             MOV 2Ch,A
-                     524     
-017F E554            525             MOV A,cursor
-0181 F4              526             CPL A
-0182 54FE            527             ANL A,#11111110b
-0184 552C            528             ANL A,2Ch
-                     529             
-0186 7001            530             JNZ reset
-                     531     ;       SETB TR0 ;stop timer during buffer update
-                     532     ;       SETB TR1 ;stop timer during buffer update
-                     533     ;       SETB EA ;global interrupt disable
-                     534                     
-0188 22              535             ret
-                     536             
-0189                 537     reset:
-0189 7828            538     MOV R0,#numberOfCollumns
-018B                 539     gameReset:
-018B 7FFF            540                     MOV R7,#0FFh ; stockate data in R7 for collumnshift
-018D 12019C          541                     LCALL dispColShift
-0190 D8F9            542                     DJNZ R0, gameReset
-0192 02009B          543     LJMP ISR_tmr0
-                     544     
-                     545     
-                     546             
-                     547     
-                     548     
+                             **********
+                     495     ;******************************************************************************************
+                             **********
+                     496     
+                     497     
+                     498     ;**************************$ This function shifts the byte stockated in R6 into the shiftre
+                             gisters connected to P4.1****************************************
+0162                 499     shiftR6:
+0162 C0E0            500                                     push Acc
+0164 EE              501                                     MOV A, R6  ; move the value to A
+0165 7E08            502                                     MOV R6, #08 ;counting register to 8
+0167                 503                                     Reg:
+0167 13              504                                     RRC A ;rotate accumulator troug carre to get the the LSB in
+                             to the carry
+0168 92C1            505                                     MOV P4.1,C ;carry to the data pin
+016A D2C0            506                                     SETB P4.0 ; cycle serial clock
+016C C2C0            507                                     CLR P4.0
+016E DEF7            508                                     DJNZ R6,Reg ;if 8 bits are shifted go further otherwise rep
+                             eat
+0170 D0E0            509                                     pop Acc
+0172 22              510                                     ret
+                     511     
+                     512     ;**************************$ This function detects the collisions of the cursor with the ba
+                             ckground blocks **************************************************
+0173                 513     detectCollision:
+                     514     
+                     515     ; this moves the eight collumn of the display data into a single byte to be matched with th
+                             e cursor position
+0173 E534            516             MOV A,34h ;get the byte of the first row
+0175 13              517             RRC A ;shift the LSB into the carry, this matches the eight collumn of that row.
+0176 9267            518             MOV 67h,C ;stockate C in the MSB of the collumn
+                     519             
+0178 E539            520             MOV A,39h ;second row
+017A 13              521             RRC A
+017B 9266            522             MOV 66h,C ;C to MSB-1
+                     523             
+017D E53E            524             MOV A,3Eh
+017F 13              525             RRC A
+0180 9265            526             MOV 65h,C
+                     527             
+0182 E543            528             MOV A,43h
+0184 13              529             RRC A
+0185 9264            530             MOV 64h,C
+                     531             
+0187 E548            532             MOV A,48h
+0189 13              533             RRC A
+018A 9263            534             MOV 63h,C
+                     535             
+018C E54D            536             MOV A,4Dh
+018E 13              537             RRC A
+018F 9262            538             MOV 62h,C
+                     539             
+0191 E552            540             MOV A,52h ; seventh row, to LSB + 1
+0193 13              541             RRC A
+0194 9261            542             MOV 61h,C
+                     543     
+0196 C260            544             CLR 60h ; clear the LSB ;TODO needed?
+                     545             
+0198 E52C            546             MOV A,2Ch ;move the constructed byte to A
+019A F4              547             CPL A ; complement it because all the 0 represent walls
+019B F52C            548             MOV 2Ch,A ; move it back
                      549     
-                     550     
-                     551     
-                     552     
-0195                 553     dispRowShift:
-0195 E7              554             MOV A,@R1
-0196 33              555             RLC A
-0197 F7              556             MOV @R1,A
-0198 09              557             INC R1
-0199 DEFA            558             DJNZ R6, dispRowShift
-019B 22              559             RET
-                     560     ;shift 7 MSB in framebuffer
-019C                 561     dispColShift:
-019C EF              562             MOV A, R7
-019D 7D07            563             MOV     R5, #numberOfRows ;counter to count rows
-                     564             ;RRC A ;rotate to drop LSB
-019F 7930            565             MOV R1, #vidMemStart ; start at highest address to decrease each time
-01A1                 566     dispColShiftLoop:
-01A1 13              567             RRC A ;Rotate LSB in carry to shift in row
-01A2 7E05            568             MOV     R6, #bytesPerRow ; counter to rotate 5 horizontal bytes
-01A4 C0E0            569             PUSH ACC ; push acc to save current data
-01A6 3195            570             ACALL dispRowShift ; rotate all row bytes
-01A8 D0E0            571             POP ACC
-01AA DDF5            572             DJNZ R5, dispColShiftLoop
-01AC 22              573             RET
-                     574             
-                     575             
-                     576             
-                     577             
-                     578             
-                     579     ;rudimentary delay for test purposes
-01AD                 580     delay:   
-01AD 7E9F            581                     MOV R6, #09Fh
-01AF 1201B3          582                     LCALL loop
-A51 MACRO ASSEMBLER  MAIN                                                                 05/13/2016 16:04:26 PAGE    10
+019D E554            550             MOV A,cursor ; get the cursor data
+019F F4              551             CPL A ; complement it since the 0 is where the cursor is, all others should be 1
+01A0 54FE            552             ANL A,#11111110b ; mask it so possible residual data on the invisible eight row doe
+                             s not influence the detection
+A51 MACRO ASSEMBLER  MAIN                                                                 05/18/2016 12:13:44 PAGE    10
 
-01B2 22              583                     RET
+01A2 552C            553             ANL A,2Ch ; And the cursor positon in A with the eight collumn of the screen
+                     554                               ; if the cursor is on the same location as a lit pixel (obstackle
+                             /wall) the AND will produce a 1 on a certain position
+                     555             
+01A4 7001            556             JNZ dead ; if the AND action is !=0 a collision is detected , then jump to the dead
+                              routine
+                     557     
+01A6 22              558             ret
+                     559             
+                     560     ;***************** This routine is executed when a collision is detected ******************
+                             **
+01A7                 561     dead:
+                     562     
+                     563     ; this clear the game field in ram
+01A7 7828            564     MOV R0,#numberOfCollumns
+01A9                 565     gameReset:
+01A9 7FFF            566                     MOV R7,#0FFh ; stockate data in R7 for collumnshift
+01AB 1201CF          567                     LCALL dispColShift
+01AE D8F9            568                     DJNZ R0, gameReset
+01B0 D259            569     SETB 59h ;set game over state
+01B2 22              570     ret ;return to caller (ISR_tmr0)
+                     571     
+                     572     
+01B3                 573     gameInit:
+                     574     ;***************** Initialize ram to all ones (all leds off)*******************************
+                                           
+01B3 7830            575                             MOV R0,#vidMemStart 
+01B5 7928            576                             MOV R1,#numberOfCollumns
+01B7                 577     ramInit:
+01B7 76FF            578                             MOV @R0,#0FFh
+01B9 08              579                             INC R0
+01BA D9FB            580                             DJNZ R1,ramInit
+                     581                             
+                     582     ;***************** Init the game logic  *************************
+01BC 75186A          583     MOV 18h, #1101010b 
                      584     
-01B3                 585     loop:   
-01B3 7F00            586                     MOV R7, #00h
-01B5 1201BB          587                     LCALL loop2
-01B8 D9F9            588                     DJNZ R1, loop
-01BA 22              589                     RET
-                     590                     
-01BB DAFE            591     loop2:  DJNZ R2,loop2
-01BD 22              592                     RET
-                     593                     
-                     594                     
-                     595     ;random number generator code trough LFSR               
-01BE                 596     LFSR: 
-01BE D2D4            597             SETB RS1 ;move to registerbank 08h to 0Fh
-01C0 D2D3            598             SETB RS0
-01C2 E8              599             MOV A,R0 ;Save highest byte to address
-01C3 FC              600             MOV R4,A
-01C4 1201E9          601             lcall LFSRShift
-01C7 1201E9          602             lcall LFSRShift
-01CA 6C              603             XRL A,R4
-01CB FC              604             MOV R4,A
-01CC 1201E9          605             lcall LFSRShift
-01CF 1201E9          606             lcall LFSRShift
-01D2 1201E9          607             lcall LFSRShift
-01D5 1201E9          608             lcall LFSRShift
-01D8 6C              609             XRL A,R4
-01D9 FC              610             MOV R4,A                
-01DA 1201E9          611             lcall LFSRShift
-01DD 6C              612             XRL A,R4
-01DE FC              613             MOV R4,A
-01DF 1201E9          614             lcall LFSRShift
-01E2 EC              615             MOV A,R4
-01E3 FB              616             MOV R3,A
-                     617             
-01E4 C2D4            618             CLR RS1 ;move to registerbank 08h to 0Fh
-01E6 C2D3            619             CLR RS0
-                     620             
-01E8 22              621             RET
-                     622             
-                     623     ;shift the 32 bit registers of the LFSR
-01E9                 624     LFSRShift: 
-01E9 EB              625             MOV A,R3 ; rotate shift register
-01EA 33              626             RLC A
-01EB FB              627             MOV R3,A
-01EC EA              628             MOV A,R2 ; rotate shift register
-01ED 33              629             RLC A
-01EE FA              630             MOV R2,A
-01EF E9              631             MOV A,R1 ; rotate shift register
-01F0 33              632             RLC A
-01F1 F9              633             MOV R1,A
-01F2 E8              634             MOV A,R0 ; rotate shift register
-01F3 33              635             RLC A
-01F4 F8              636             MOV R0,A
-01F5 22              637             ret     
-                     638             
-                     639     
-01F6                 640             block0:
-01F6 3E              641             db 0x3e
-01F7 3E              642             db 0x3e
-01F8 3E              643             db 0x3e
-01F9 3E              644             db 0x3e
-01FA 3E              645             db 0x3e
-01FB 3E              646             db 0x3e
-01FC 3E              647             db 0x3e
-01FD 3E              648             db 0x3e
-A51 MACRO ASSEMBLER  MAIN                                                                 05/13/2016 16:04:26 PAGE    11
+01BF 7B08            585     MOV R3,#bytesPerBlock ; repeat 4 times
+01C1 E518            586     MOV A,18h ; get data from MSB LFSR
+01C3 5438            587     ANL A,#0111000b ;mask for the number of blocks          
+01C5 F553            588     MOV blockIndex, A ; save current adress for next block
+01C7 120200          589     LCALL LFSR  ; generate new random data
+01CA B2A4            590     CPL P2.4 ; toggle led to see if working
+01CC 8B57            591     MOV blockIteration,R3
+                     592     
+01CE 22              593     ret
+                     594     
+                     595     
+                     596     
+                     597             
+                     598     
+                     599     ;*************************** This function shifts a collumn in the game to make it go forwa
+                             rd *******************
+                     600     
+                     601     ;shift 7 MSB in framebuffer
+01CF                 602     dispColShift:
+01CF EF              603             MOV A, R7 ; move the collumn that needs to be shifted in from R7 into A
+01D0 7D07            604             MOV     R5, #numberOfRows ;counter to count rows 
+01D2 7930            605             MOV R1, #vidMemStart ; start at lowest address to increase each time
+01D4                 606     dispColShiftLoop: ; this part is looped
+01D4 13              607             RRC A ;Rotate LSB in carry to shift into the row
+01D5 7E05            608             MOV     R6, #bytesPerRow ; counter to rotate 5 horizontal bytes will be used in dis
+                             pRowShift to count the progress
+                     609             
+01D7 C0E0            610             PUSH ACC ; push acc to save current data of A
+01D9 31E0            611             ACALL dispRowShift ; rotate all row bytes 
+01DB D0E0            612             POP ACC ;pop the accumulator
+A51 MACRO ASSEMBLER  MAIN                                                                 05/18/2016 12:13:44 PAGE    11
 
-                     649             
-                     650             
-01FE                 651             block1:
-                     652             
-01FE 3E              653             db 0x3e
-01FF 3E              654             db 0x3e
-0200 3E              655             db 0x3e
-0201 1C              656             db 0x1C
-0202 1C              657             db 0x1C
-0203 1C              658             db 0x1C
-0204 3E              659             db 0x3e
-0205 3E              660             db 0x3e
-                     661             
-0206                 662             block2:
-                     663             
-0206 3E              664             db 0x3e
-0207 3E              665             db 0x3e
-0208 3E              666             db 0x3e
-0209 38              667             db 0x38
-020A 38              668             db 0x38
-020B 38              669             db 0x38
-020C 3E              670             db 0x3e
-020D 3E              671             db 0x3e
-                     672                     
-020E                 673             block3:
-                     674             
-020E 3E              675             db 0x3e
-020F 3E              676             db 0x3e
-0210 3E              677             db 0x3e
-0211 18              678             db 0x18
-0212 18              679             db 0x18
-0213 18              680             db 0x18
-0214 3E              681             db 0x3e
-0215 3E              682             db 0x3e
-                     683                     
-0216                 684             block4:
-                     685             
-0216 3E              686             db 0x3e
-0217 3E              687             db 0x3e
-0218 3E              688             db 0x3e
-0219 06              689             db 0x06
-021A 06              690             db 0x06
-021B 3E              691             db 0x3e
-021C 3E              692             db 0x3e
-021D 3E              693             db 0x3e
-                     694             
-021E                 695             block5:
-021E 3E              696             db 0x3e
-021F 3E              697             db 0x3e
-0220 3E              698             db 0x3e
-0221 08              699             db 0x08
-0222 08              700             db 0x08
-0223 3E              701             db 0x3e
-0224 3E              702             db 0x3e
-0225 3E              703             db 0x3e
-                     704                     
-0226                 705             block6:
-                     706             
-0226 3E              707             db 0x3e
-0227 3E              708             db 0x3e
-0228 3E              709             db 0x3e
-0229 32              710             db 0x32
-022A 32              711             db 0x32
-022B 3E              712             db 0x3e
-022C 3E              713             db 0x3e
-022D 3E              714             db 0x3e
-A51 MACRO ASSEMBLER  MAIN                                                                 05/13/2016 16:04:26 PAGE    12
+01DD DDF5            613             DJNZ R5, dispColShiftLoop ; repeat until all rows are shifted
+01DF 22              614             RET
+                     615             
+                     616             
+                     617             ;TODO move this into the dispColShiftLoop instead of calling it
+01E0                 618     dispRowShift: ; this rotates the carry into the current memory address
+01E0 E7              619             MOV A,@R1 ;start at the current addres and move it from RAM into A
+01E1 33              620             RLC A ;rotate the carry into the LSB of the current byte, the LSB comes into the th
+                             e carry 
+01E2 F7              621             MOV @R1,A ;move the updated byte back into ram
+01E3 09              622             INC R1   ;increase for the next byte
+01E4 DEFA            623             DJNZ R6, dispRowShift ; do this until the current row is updated. The carry becomes
+                              the LSB, the MSB becomes the carry to become the LSB of the next byte
+01E6 22              624             RET
+                     625             
+                     626             
+                     627             
+                     628             
+                     629     ;rudimentary delay for test purposes
+01E7                 630     delay:   
+01E7 7D0F            631                     MOV R5, #0Fh
+01E9 1201ED          632                     LCALL loop
+01EC 22              633                     RET
+                     634     
+01ED                 635     loop:   
+01ED 7E00            636                     MOV R6, #00h
+01EF 1201F5          637                     LCALL loop2
+01F2 DDF9            638                     DJNZ R5, loop
+01F4 22              639                     RET
+01F5                 640     loop2:  
+01F5 7F00            641                     MOV R7, #00h
+01F7 1201FD          642                     LCALL loop3
+01FA DEF9            643                     DJNZ R6, loop2
+01FC 22              644                     RET
+                     645                     
+01FD DFFE            646     loop3:  DJNZ R7,loop3
+01FF 22              647                     RET
+                     648                     
+                     649     ;**********************************************************************************        
+                                  
+                     650     ;random number generator code trough LFSR               
+0200                 651     LFSR: 
+0200 D2D4            652             SETB RS1 ;move to registerbank 08h to 0Fh
+0202 D2D3            653             SETB RS0
+0204 E8              654             MOV A,R0 ;Save highest byte to address
+0205 FC              655             MOV R4,A
+0206 12022B          656             lcall LFSRShift
+0209 12022B          657             lcall LFSRShift
+020C 6C              658             XRL A,R4
+020D FC              659             MOV R4,A
+020E 12022B          660             lcall LFSRShift
+0211 12022B          661             lcall LFSRShift
+0214 12022B          662             lcall LFSRShift
+0217 12022B          663             lcall LFSRShift
+021A 6C              664             XRL A,R4
+021B FC              665             MOV R4,A                
+021C 12022B          666             lcall LFSRShift
+021F 6C              667             XRL A,R4
+0220 FC              668             MOV R4,A
+0221 12022B          669             lcall LFSRShift
+0224 EC              670             MOV A,R4
+0225 FB              671             MOV R3,A
+                     672             
+0226 C2D4            673             CLR RS1 ;move to registerbank 08h to 0Fh
+0228 C2D3            674             CLR RS0
+                     675             
+A51 MACRO ASSEMBLER  MAIN                                                                 05/18/2016 12:13:44 PAGE    12
 
-                     715                     
-022E                 716             block7:
-022E 3E              717             db 0x3e
-022F 3E              718             db 0x3e
-0230 3E              719             db 0x3e
-0231 26              720             db 0x26
-0232 26              721             db 0x26
-0233 3E              722             db 0x3e
-0234 3E              723             db 0x3e
-0235 3E              724             db 0x3e
-                     725                     
-0236                 726             block8:
-0236 3E              727             db 0x3e
-0237 3E              728             db 0x3e
-0238 3E              729             db 0x3e
-0239 26              730             db 0x26
-023A 26              731             db 0x26
-023B 3E              732             db 0x3e
-023C 3E              733             db 0x3e
-023D 3E              734             db 0x3e
-                     735                     
-                     736                     
-                     737     
-                     738     END
+022A 22              676             RET
+                     677             
+                     678     ;shift the 32 bit registers of the LFSR
+022B                 679     LFSRShift: 
+022B EB              680             MOV A,R3 ; rotate shift register
+022C 33              681             RLC A
+022D FB              682             MOV R3,A
+022E EA              683             MOV A,R2 ; rotate shift register
+022F 33              684             RLC A
+0230 FA              685             MOV R2,A
+0231 E9              686             MOV A,R1 ; rotate shift register
+0232 33              687             RLC A
+0233 F9              688             MOV R1,A
+0234 E8              689             MOV A,R0 ; rotate shift register
+0235 33              690             RLC A
+0236 F8              691             MOV R0,A
+0237 22              692             ret     
+                     693             
+                     694     ;******************************************************************************************
+                             ***********************
+                     695     ;************************************* DIRECT BYTES IN CODE MEMORY ************************
+                             **********************
+                     696     ;******************************************************************************************
+                             ********************$
+                     697     
+                     698     ;*********************** These are the obstackle blocks ***********************************
+                             ****************
+0238                 699             block0:
+0238 3E              700             db 0x3e
+0239 3E              701             db 0x3e
+023A 3E              702             db 0x3e
+023B 3E              703             db 0x3e
+023C 3E              704             db 0x3e
+023D 3E              705             db 0x3e
+023E 3E              706             db 0x3e
+023F 3E              707             db 0x3e
+                     708             
+                     709             
+0240                 710             block1:
+                     711             
+0240 3E              712             db 0x3e
+0241 3E              713             db 0x3e
+0242 3E              714             db 0x3e
+0243 1C              715             db 0x1C
+0244 1C              716             db 0x1C
+0245 1C              717             db 0x1C
+0246 3E              718             db 0x3e
+0247 3E              719             db 0x3e
+                     720             
+0248                 721             block2:
+                     722             
+0248 3E              723             db 0x3e
+0249 3E              724             db 0x3e
+024A 3E              725             db 0x3e
+024B 38              726             db 0x38
+024C 38              727             db 0x38
+024D 38              728             db 0x38
+024E 3E              729             db 0x3e
+024F 3E              730             db 0x3e
+                     731                     
+0250                 732             block3:
+                     733             
+0250 3E              734             db 0x3e
+0251 3E              735             db 0x3e
+0252 3E              736             db 0x3e
+0253 18              737             db 0x18
+A51 MACRO ASSEMBLER  MAIN                                                                 05/18/2016 12:13:44 PAGE    13
+
+0254 18              738             db 0x18
+0255 18              739             db 0x18
+0256 3E              740             db 0x3e
+0257 3E              741             db 0x3e
+                     742                     
+0258                 743             block4:
+                     744             
+0258 3E              745             db 0x3e
+0259 3E              746             db 0x3e
+025A 3E              747             db 0x3e
+025B 06              748             db 0x06
+025C 06              749             db 0x06
+025D 3E              750             db 0x3e
+025E 3E              751             db 0x3e
+025F 3E              752             db 0x3e
+                     753             
+0260                 754             block5:
+0260 3E              755             db 0x3e
+0261 3E              756             db 0x3e
+0262 3E              757             db 0x3e
+0263 08              758             db 0x08
+0264 08              759             db 0x08
+0265 3E              760             db 0x3e
+0266 3E              761             db 0x3e
+0267 3E              762             db 0x3e
+                     763                     
+0268                 764             block6:
+                     765             
+0268 3E              766             db 0x3e
+0269 3E              767             db 0x3e
+026A 3E              768             db 0x3e
+026B 32              769             db 0x32
+026C 32              770             db 0x32
+026D 3E              771             db 0x3e
+026E 3E              772             db 0x3e
+026F 3E              773             db 0x3e
+                     774                     
+0270                 775             block7:
+0270 3E              776             db 0x3e
+0271 3E              777             db 0x3e
+0272 3E              778             db 0x3e
+0273 26              779             db 0x26
+0274 26              780             db 0x26
+0275 3E              781             db 0x3e
+0276 3E              782             db 0x3e
+0277 3E              783             db 0x3e
+                     784                     
+0278                 785             block8:
+0278 3E              786             db 0x3e
+0279 3E              787             db 0x3e
+027A 3E              788             db 0x3e
+027B 26              789             db 0x26
+027C 26              790             db 0x26
+027D 3E              791             db 0x3e
+027E 3E              792             db 0x3e
+027F 3E              793             db 0x3e
+                     794                     
+                     795     ;Letters
+0280                 796     game_over:
+                     797     
+                     798             ;;r
+                     799             ;db 11010011b
+0280 CB              800             db 11001011b
+                     801             ;db 10101111b
+0281 F5              802             db 11110101b
+                     803             ;db 10101111b
+A51 MACRO ASSEMBLER  MAIN                                                                 05/18/2016 12:13:44 PAGE    14
+
+0282 F5              804             db 11110101b
+                     805             ;db 10000011b
+0283 C1              806             db 11000001b
+                     807                     ;;e
+                     808             ;db 10111011b
+0284 FF              809             db 11111111b
+                     810             ;db 10101011b
+0285 D5              811             db 11010101b
+                     812             ;db 10101011b
+0286 D5              813             db 11010101b
+                     814             ;db 10000011b
+0287 C1              815             db 11000001b
+                     816             ;db 11111111b
+0288 FF              817             db 11111111b
+                     818             
+                     819             ;;v
+                     820             ;db 10000111b
+0289 E1              821             db 11100001b
+                     822             ;db 11111011b
+028A DF              823             db 11011111b
+                     824             ;db 11111011b
+028B DF              825             db 11011111b
+                     826             ;db 10000111b
+028C E1              827             db 11100001b
+                     828             ;db 11111111b
+028D FF              829             db 11111111b
+                     830                     
+                     831             ;;o
+                     832             ;db 10000011b
+028E C1              833             db 11000001b
+                     834             ;db 10111011b
+028F DD              835             db 11011101b
+                     836             ;db 10111011b
+0290 DD              837             db 11011101b
+                     838             ;db 10000011b
+0291 C1              839             db 11000001b
+                     840             ;db 11111111b   
+0292 FF              841             db 11111111b
+                     842             ;;space
+                     843             ;db 11111111b   
+0293 FF              844             db 11111111b
+                     845                             ;;e
+                     846             ;db 10111011b
+0294 FF              847             db 11111111b
+                     848             ;db 10101011b
+0295 D5              849             db 11010101b
+                     850             ;db 10101011b
+0296 D5              851             db 11010101b
+                     852             ;db 10000011b
+0297 C1              853             db 11000001b
+                     854             ;db 11111111b
+0298 FF              855             db 11111111b
+                     856                     
+                     857             ;;m     
+                     858             ;db 10000011b
+0299 C1              859             db 11000001b    
+                     860             ;db 11011111b
+029A FB              861             db 11111011b
+                     862             ;db 11101111b
+029B F7              863             db 11110111b
+                     864             ;db 11011111b
+029C FB              865             db 11111011b
+                     866             ;db 10000011b   
+029D C1              867             db 11000001b
+                     868             ;db 11111111b
+029E FF              869             db 11111111b
+A51 MACRO ASSEMBLER  MAIN                                                                 05/18/2016 12:13:44 PAGE    15
+
+                     870             ;;a
+                     871             ;db 11000011b 
+029F C3              872             db 11000011b
+                     873             ;db 10101111b
+02A0 F5              874             db 11110101b
+                     875             ;db 10101111b
+02A1 F5              876             db 11110101b
+                     877             ;db 11000011b
+02A2 C3              878             db 11000011b
+                     879             ;db 11111111b
+02A3 FF              880             db 11111111b    
+                     881     
+                     882     ;;G
+                     883             ;db 10100011b ;LSB does not matter 
+02A4 C5              884             db 11000101b
+                     885             ;db 10101011b
+02A5 D5              886             db 11010101b
+                     887             ;db 10111011b
+02A6 DD              888             db 11011101b
+                     889             ;db 10000011b
+02A7 C1              890             db 11000001b
+                     891     
+                     892                     
+                     893     
+                     894     END
                              
                                      
                                              
-A51 MACRO ASSEMBLER  MAIN                                                                 05/13/2016 16:04:26 PAGE    13
+A51 MACRO ASSEMBLER  MAIN                                                                 05/18/2016 12:13:44 PAGE    16
 
 SYMBOL TABLE LISTING
 ------ ----- -------
@@ -790,19 +995,21 @@ ADCON. . . . . . .  D ADDR   00F3H   A
 ADCVAL . . . . . .  D ADDR   005AH   A   
 ADDH . . . . . . .  D ADDR   00F5H   A   
 ADDL . . . . . . .  D ADDR   00F4H   A   
-AFTERRANDOM. . . .  C ADDR   0121H   A   
+AFTERCOLLISION . .  C ADDR   0108H   A   
+AFTERRANDOM. . . .  C ADDR   013FH   A   
 AUXR . . . . . . .  D ADDR   008EH   A   
 AUXR1. . . . . . .  D ADDR   00A2H   A   
 B. . . . . . . . .  D ADDR   00F0H   A   
-BLOCK0 . . . . . .  C ADDR   01F6H   A   
-BLOCK1 . . . . . .  C ADDR   01FEH   A   
-BLOCK2 . . . . . .  C ADDR   0206H   A   
-BLOCK3 . . . . . .  C ADDR   020EH   A   
-BLOCK4 . . . . . .  C ADDR   0216H   A   
-BLOCK5 . . . . . .  C ADDR   021EH   A   
-BLOCK6 . . . . . .  C ADDR   0226H   A   
-BLOCK7 . . . . . .  C ADDR   022EH   A   
-BLOCK8 . . . . . .  C ADDR   0236H   A   
+BLANKDISPLAY . . .  C ADDR   00D7H   A   
+BLOCK0 . . . . . .  C ADDR   0238H   A   
+BLOCK1 . . . . . .  C ADDR   0240H   A   
+BLOCK2 . . . . . .  C ADDR   0248H   A   
+BLOCK3 . . . . . .  C ADDR   0250H   A   
+BLOCK4 . . . . . .  C ADDR   0258H   A   
+BLOCK5 . . . . . .  C ADDR   0260H   A   
+BLOCK6 . . . . . .  C ADDR   0268H   A   
+BLOCK7 . . . . . .  C ADDR   0270H   A   
+BLOCK8 . . . . . .  C ADDR   0278H   A   
 BLOCKINDEX . . . .  D ADDR   0053H   A   
 BLOCKITERATION . .  D ADDR   0057H   A   
 BYTESPERBLOCK. . .  N NUMB   0008H   A   
@@ -840,10 +1047,10 @@ CANTEC . . . . . .  D ADDR   009CH   A
 CANTIMH. . . . . .  D ADDR   00ADH   A   
 CANTIML. . . . . .  D ADDR   00ACH   A   
 CANTTCH. . . . . .  D ADDR   00A5H   A   
+A51 MACRO ASSEMBLER  MAIN                                                                 05/18/2016 12:13:44 PAGE    17
+
 CANTTCL. . . . . .  D ADDR   00A4H   A   
 CCAP0H . . . . . .  D ADDR   00FAH   A   
-A51 MACRO ASSEMBLER  MAIN                                                                 05/13/2016 16:04:26 PAGE    14
-
 CCAP0L . . . . . .  D ADDR   00EAH   A   
 CCAP1H . . . . . .  D ADDR   00FBH   A   
 CCAP1L . . . . . .  D ADDR   00EBH   A   
@@ -874,13 +1081,15 @@ CR . . . . . . . .  B ADDR   00D8H.6 A
 CURSOR . . . . . .  D ADDR   0054H   A   
 CURSORBYTE . . . .  N NUMB   00FEH   A   
 CURSORBYTEMASK . .  N NUMB   0001H   A   
+CURSORLBL. . . . .  C ADDR   00E4H   A   
 CY . . . . . . . .  B ADDR   00D0H.7 A   
 C_T2 . . . . . . .  B ADDR   00C8H.1 A   
-DELAY. . . . . . .  C ADDR   01ADH   A   
-DETECTCOLLISION. .  C ADDR   0155H   A   
-DISPCOLSHIFT . . .  C ADDR   019CH   A   
-DISPCOLSHIFTLOOP .  C ADDR   01A1H   A   
-DISPROWSHIFT . . .  C ADDR   0195H   A   
+DEAD . . . . . . .  C ADDR   01A7H   A   
+DELAY. . . . . . .  C ADDR   01E7H   A   
+DETECTCOLLISION. .  C ADDR   0173H   A   
+DISPCOLSHIFT . . .  C ADDR   01CFH   A   
+DISPCOLSHIFTLOOP .  C ADDR   01D4H   A   
+DISPROWSHIFT . . .  C ADDR   01E0H   A   
 DPH. . . . . . . .  D ADDR   0083H   A   
 DPL. . . . . . . .  D ADDR   0082H   A   
 EA . . . . . . . .  B ADDR   00A8H.7 A   
@@ -901,8 +1110,13 @@ F0 . . . . . . . .  B ADDR   00D0H.5 A
 FCON . . . . . . .  D ADDR   00D1H   A   
 FE . . . . . . . .  B ADDR   0098H.7 A   
 FPGACON. . . . . .  D ADDR   00F1H   A   
-GAMERESET. . . . .  C ADDR   018BH   A   
+GAMEINIT . . . . .  C ADDR   01B3H   A   
+GAMEOVERLOOP . . .  C ADDR   008CH   A   
+GAMERESET. . . . .  C ADDR   01A9H   A   
+GAME_OVER. . . . .  C ADDR   0280H   A   
 IE0. . . . . . . .  B ADDR   0088H.1 A   
+A51 MACRO ASSEMBLER  MAIN                                                                 05/18/2016 12:13:44 PAGE    18
+
 IE1. . . . . . . .  B ADDR   0088H.3 A   
 IEN0 . . . . . . .  D ADDR   00A8H   A   
 IEN1 . . . . . . .  D ADDR   00E8H   A   
@@ -910,24 +1124,22 @@ INIT . . . . . . .  C ADDR   0046H   A
 INT0 . . . . . . .  B ADDR   00B0H.2 A   
 INT1 . . . . . . .  B ADDR   00B0H.3 A   
 IPH0 . . . . . . .  D ADDR   00B7H   A   
-A51 MACRO ASSEMBLER  MAIN                                                                 05/13/2016 16:04:26 PAGE    15
-
 IPH1 . . . . . . .  D ADDR   00F7H   A   
 IPL0 . . . . . . .  D ADDR   00B8H   A   
 IPL1 . . . . . . .  D ADDR   00F8H   A   
-ISR_ADC. . . . . .  C ADDR   012CH   A   
-ISR_TMR0 . . . . .  C ADDR   009BH   A   
-ISR_TMR1 . . . . .  C ADDR   00F8H   A   
+ISR_ADC. . . . . .  C ADDR   014AH   A   
+ISR_TMR0 . . . . .  C ADDR   00ABH   A   
+ISR_TMR1 . . . . .  C ADDR   0113H   A   
 IT0. . . . . . . .  B ADDR   0088H.0 A   
 IT1. . . . . . . .  B ADDR   0088H.2 A   
-LASTLINECOMP . . .  C ADDR   00C9H   A   
-LFSR . . . . . . .  C ADDR   01BEH   A   
-LFSRSHIFT. . . . .  C ADDR   01E9H   A   
-LINEBYTES. . . . .  C ADDR   00B3H   A   
-LOCATIONLBL. . . .  C ADDR   00DCH   A   
-LOOP . . . . . . .  C ADDR   01B3H   A   
-LOOP2. . . . . . .  C ADDR   01BBH   A   
-MAIN . . . . . . .  C ADDR   0095H   A   
+LFSR . . . . . . .  C ADDR   0200H   A   
+LFSRSHIFT. . . . .  C ADDR   022BH   A   
+LINEBYTES. . . . .  C ADDR   00C3H   A   
+LOCATIONLBL. . . .  C ADDR   00F7H   A   
+LOOP . . . . . . .  C ADDR   01EDH   A   
+LOOP2. . . . . . .  C ADDR   01F5H   A   
+LOOP3. . . . . . .  C ADDR   01FDH   A   
+MAIN . . . . . . .  C ADDR   0075H   A   
 NUMBEROFCOLLUMNS .  N NUMB   0028H   A   
 NUMBEROFROWS . . .  N NUMB   0007H   A   
 OV . . . . . . . .  B ADDR   00D0H.2 A   
@@ -939,17 +1151,16 @@ P3 . . . . . . . .  D ADDR   00B0H   A
 P4 . . . . . . . .  D ADDR   00C0H   A   
 PCON . . . . . . .  D ADDR   0087H   A   
 PSW. . . . . . . .  D ADDR   00D0H   A   
-RAMINIT. . . . . .  C ADDR   0060H   A   
+RAMINIT. . . . . .  C ADDR   01B7H   A   
 RB8. . . . . . . .  B ADDR   0098H.2 A   
 RCAP2H . . . . . .  D ADDR   00CBH   A   
 RCAP2L . . . . . .  D ADDR   00CAH   A   
 RCLK . . . . . . .  B ADDR   00C8H.5 A   
 RD . . . . . . . .  B ADDR   00B0H.7 A   
-REG. . . . . . . .  C ADDR   0149H   A   
+REG. . . . . . . .  C ADDR   0167H   A   
 REN. . . . . . . .  B ADDR   0098H.4 A   
-RESET. . . . . . .  C ADDR   0189H   A   
 RI . . . . . . . .  B ADDR   0098H.0 A   
-ROWITERATION . . .  C ADDR   00B1H   A   
+ROWITERATION . . .  C ADDR   00C1H   A   
 RS0. . . . . . . .  B ADDR   00D0H.3 A   
 RS1. . . . . . . .  B ADDR   00D0H.4 A   
 RXD. . . . . . . .  B ADDR   00B0H.0 A   
@@ -957,7 +1168,7 @@ SADDR. . . . . . .  D ADDR   00A9H   A
 SADEN. . . . . . .  D ADDR   00B9H   A   
 SBUF . . . . . . .  D ADDR   0099H   A   
 SCON . . . . . . .  D ADDR   0098H   A   
-SHIFTR6. . . . . .  C ADDR   0144H   A   
+SHIFTR6. . . . . .  C ADDR   0162H   A   
 SM0. . . . . . . .  B ADDR   0098H.7 A   
 SM1. . . . . . . .  B ADDR   0098H.6 A   
 SM2. . . . . . . .  B ADDR   0098H.5 A   
@@ -972,14 +1183,14 @@ TCON . . . . . . .  D ADDR   0088H   A
 TF0. . . . . . . .  B ADDR   0088H.5 A   
 TF1. . . . . . . .  B ADDR   0088H.7 A   
 TF2. . . . . . . .  B ADDR   00C8H.7 A   
+A51 MACRO ASSEMBLER  MAIN                                                                 05/18/2016 12:13:44 PAGE    19
+
 TH0. . . . . . . .  D ADDR   008CH   A   
 TH1. . . . . . . .  D ADDR   008DH   A   
 TH2. . . . . . . .  D ADDR   00CDH   A   
 TI . . . . . . . .  B ADDR   0098H.1 A   
 TL0. . . . . . . .  D ADDR   008AH   A   
 TL1. . . . . . . .  D ADDR   008BH   A   
-A51 MACRO ASSEMBLER  MAIN                                                                 05/13/2016 16:04:26 PAGE    16
-
 TL2. . . . . . . .  D ADDR   00CCH   A   
 TMOD . . . . . . .  D ADDR   0089H   A   
 TR0. . . . . . . .  B ADDR   0088H.4 A   
