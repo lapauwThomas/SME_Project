@@ -95,7 +95,7 @@ LJMP main
 main:		
 ;does except update the random numbers actually everything happens timer based since the updating of either one is mutually exclusive, 
 ;no interrupt may happen while they are busy
-	LCALL LFSR ; update ranom value
+	LCALL LFSR ; update random value
 	JNB 59h, main ; if not game over go back to main
 				;this is the game over routine
 	CLR RS1 ;move to registerbank 00h to 08h
@@ -107,7 +107,7 @@ main:
 			
 	MOV R0,#39
 	MOV R1,#0
-	MOV DPTR,#game_over
+	MOV DPTR,#game_over ;this pushes the game over message to the RAM
 gameOverLoop:
 	MOV A,R0
 	MOVC A,@A+DPTR
@@ -123,9 +123,9 @@ gameOverLoop:
 	SETB TR1
 	SETB EA ;global interrupt enable
 
-	LCALL delay
-	LCALL gameInit
-	CLR 59h 
+	LCALL delay ;delay for a while (blocking delay)
+	LCALL gameInit ;re init the game
+	CLR 59h  ;set state in running game
 	
 	LJMP main
 		
@@ -592,101 +592,64 @@ LFSRShift:
 	db 0x3e
 	db 0x3e
 		
-;Letters
+;Letters for the game over message
 game_over:
 
 	;;r
-	;db 11010011b
 	db 11001011b
-	;db 10101111b
 	db 11110101b
-	;db 10101111b
 	db 11110101b
-	;db 10000011b
 	db 11000001b
-		;;e
-	;db 10111011b
+	;;e
 	db 11111111b
-	;db 10101011b
 	db 11010101b
-	;db 10101011b
 	db 11010101b
-	;db 10000011b
 	db 11000001b
-	;db 11111111b
 	db 11111111b
 	
 	;;v
-	;db 10000111b
 	db 11100001b
-	;db 11111011b
 	db 11011111b
-	;db 11111011b
 	db 11011111b
-	;db 10000111b
 	db 11100001b
-	;db 11111111b
 	db 11111111b
 		
 	;;o
-	;db 10000011b
 	db 11000001b
-	;db 10111011b
 	db 11011101b
-	;db 10111011b
 	db 11011101b
-	;db 10000011b
 	db 11000001b
-	;db 11111111b	
 	db 11111111b
+		
 	;;space
-	;db 11111111b	
 	db 11111111b
-			;;e
-	;db 10111011b
+	
+	;;e
 	db 11111111b
-	;db 10101011b
 	db 11010101b
-	;db 10101011b
 	db 11010101b
-	;db 10000011b
 	db 11000001b
-	;db 11111111b
 	db 11111111b
 		
 	;;m	
-	;db 10000011b
 	db 11000001b	
-	;db 11011111b
 	db 11111011b
-	;db 11101111b
 	db 11110111b
-	;db 11011111b
 	db 11111011b
-	;db 10000011b	
 	db 11000001b
-	;db 11111111b
 	db 11111111b
+		
 	;;a
-	;db 11000011b 
 	db 11000011b
-	;db 10101111b
 	db 11110101b
-	;db 10101111b
 	db 11110101b
-	;db 11000011b
 	db 11000011b
-	;db 11111111b
 	db 11111111b	
 
-;;G
-	;db 10100011b ;LSB does not matter 
+	;;G
 	db 11000101b
-	;db 10101011b
 	db 11010101b
-	;db 10111011b
 	db 11011101b
-	;db 10000011b
 	db 11000001b
 
 		
