@@ -97,36 +97,9 @@ main:
 ;no interrupt may happen while they are busy
 	LCALL LFSR ; update random value
 	JNB 59h, main ; if not game over go back to main
-				;this is the game over routine
-	CLR RS1 ;move to registerbank 00h to 08h
-	CLR RS0	
-	;stop timers shortly to not interrupt the vid mem update, this routine only happens when game over so no problem
-	CLR EA ;global interrupt disable since the video memory may not be updated while the screen is updated
-	CLR TR0 ;stop tmr0
-	CLR TR1
-			
-	MOV R0,#39
-	MOV R1,#0
-	MOV DPTR,#game_over ;this pushes the game over message to the RAM
-gameOverLoop:
-	MOV A,R0
-	MOVC A,@A+DPTR
-	MOV R7,A
-	LCALL dispColShift
-	DJNZ R0,gameOverLoop
-	MOV A,R0
-	MOVC A,@A+DPTR
-	MOV R7,A
-	LCALL dispColShift
-	;restart the timers after update
-	SETB TR0 ;run tmr0
-	SETB TR1
-	SETB EA ;global interrupt enable
-
-	LCALL delay ;delay for a while (blocking delay)
+	LCALL keyboardScan ; wait for button 7 is pressed
 	LCALL gameInit ;re init the game
 	CLR 59h  ;set state in running game
-	
 	LJMP main
 		
 ;******************************* Interrupt handlers *********************************
@@ -365,11 +338,28 @@ detectCollision:
 dead:
 
 ; this clear the game field in ram
-MOV R0,#numberOfCollumns
-gameReset:
-		MOV R7,#0FFh ; stockate data in R7 for collumnshift
-		LCALL dispColShift
-		DJNZ R0, gameReset
+;MOV R0,#numberOfCollumns
+;gameReset:
+		;MOV R7,#0FFh ; stockate data in R7 for collumnshift
+		;LCALL dispColShift
+		;DJNZ R0, gameReset
+	CLR RS1 ;move to registerbank 00h to 08h
+	CLR RS0	
+			
+	MOV R0,#39
+	MOV R1,#0
+	MOV DPTR,#game_over ;this pushes the game over message to the RAM
+gameOverLoop:
+	MOV A,R0
+	MOVC A,@A+DPTR
+	MOV R7,A
+	LCALL dispColShift
+	DJNZ R0,gameOverLoop
+	MOV A,R0
+	MOVC A,@A+DPTR
+	MOV R7,A
+	LCALL dispColShift
+
 SETB 59h ;set game over state
 ret ;return to caller (ISR_tmr0)
 
@@ -494,7 +484,15 @@ LFSRShift:
 	RLC A
 	MOV R0,A
 	ret	
+
+;function to scan the keyboard, jumps to itself if button 7 is not pressed, blocks the code from advancing until button 7 is pressed.
+keyboardScan:	
+			Mov P0, #0FFh ;set all to 1
+			CLR P0.7  ; set top row to zero
+			JB  P0.3, keyboardScan ; if button 7 is high, button is not pressed
+			ret ; if P0.3 is not set button 7 is pressed, and return to continue code.
 	
+
 ;*****************************************************************************************************************
 ;************************************* DIRECT BYTES IN CODE MEMORY **********************************************
 ;**************************************************************************************************************$
