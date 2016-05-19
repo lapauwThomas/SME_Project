@@ -50,9 +50,6 @@ bytesPerBlock EQU 8
 cursorByte EQU 11111110b
 cursorByteMask EQU 00000001b
 
-
-
-
 ;Initialization code
 init:	
 
@@ -158,7 +155,7 @@ blankDisplay:			 ;loop to approximate the timing of the other rows to have simil
 			SETB P3.2 ; cycle store clock
 			CLR P3.2
 			
-			JB 59h,afterCollision ; if game over skip the cursor
+			JB 59h,afterCollision ; if gameover skip the cursor
 	;This part displays the cursor, making use of the duty cycle of the previous display part over the timerperiod,
 	;the bringhtness of the cursor can be controlled
 	
@@ -171,8 +168,6 @@ cursorLbl:			 ;loop to approximate the timing of the other rows to have similar 
 			MOV R6, #cursorByte ;shift this byte into the shift registers to enable a led in the eight row of the display to be matched with the cursor location
 			Acall shiftR6 ; shift collumn data byte into SR
 			
-
-			;MOV R6, #11101111b
 			MOV A,ADCVal ;get the last updated value of the adc to A
 			MOV B,#37 
 			DIV AB ;divide the ADC value to get a value between 0 and 6 to for the cursor position
@@ -182,7 +177,7 @@ cursorLbl:			 ;loop to approximate the timing of the other rows to have similar 
 	locationLbl:
 			RL A
 			DJNZ R6,locationLbl  ;rotate cursor data equal to location previously calculated
-			ORL A,#00000001b ;mask data over the display       ;TODO: mag evt weg
+			
 			MOV cursor,A
 			MOV R6,A ; move cursor data to R6 for shift
 			
@@ -191,7 +186,7 @@ cursorLbl:			 ;loop to approximate the timing of the other rows to have similar 
 			CLR P3.2
 			
 			
-			LCALL detectCollision ; check if a collision with the background happened with the current cursor position ;TODO: mag evt na de timers geplaatst worden
+			LCALL detectCollision ; check if a collision with the background happened with the current cursor position 
 			afterCollision:
 
 			CLR RS1 ;move to registerbank 00h to 08h
@@ -318,7 +313,7 @@ detectCollision:
 	RRC A
 	MOV 61h,C
 
-	CLR 60h ; clear the LSB ;TODO needed?
+	;CLR 60h ; clear the LSB 
 	
 	MOV A,2Ch ;move the constructed byte to A
 	CPL A ; complement it because all the 0 represent walls
@@ -383,12 +378,9 @@ MOV blockIndex, A ; save current adress for next block
 LCALL LFSR  ; generate new random data
 CPL P2.4 ; toggle led to see if working
 MOV blockIteration,R3
-
+CLR 59h ; set game as running
 ret
 
-
-
-	
 
 ;*************************** This function shifts a collumn in the game to make it go forward *******************
 
@@ -402,23 +394,18 @@ dispColShiftLoop: ; this part is looped
 	MOV	R6, #bytesPerRow ; counter to rotate 5 horizontal bytes will be used in dispRowShift to count the progress
 	
 	PUSH ACC ; push acc to save current data of A
-	ACALL dispRowShift ; rotate all row bytes 
-	POP ACC ;pop the accumulator
-	DJNZ R5, dispColShiftLoop ; repeat until all rows are shifted
-	RET
 	
-	
-	;TODO move this into the dispColShiftLoop instead of calling it
 dispRowShift: ; this rotates the carry into the current memory address
 	MOV A,@R1 ;start at the current addres and move it from RAM into A
 	RLC A ;rotate the carry into the LSB of the current byte, the LSB comes into the the carry 
 	MOV @R1,A ;move the updated byte back into ram
 	INC R1	 ;increase for the next byte
 	DJNZ R6, dispRowShift ; do this until the current row is updated. The carry becomes the LSB, the MSB becomes the carry to become the LSB of the next byte
+	
+	POP ACC ;pop the accumulator
+	DJNZ R5, dispColShiftLoop ; repeat until all rows are shifted
 	RET
-	
-	
-	
+
 	
 ;rudimentary delay for test purposes
 delay:	 
